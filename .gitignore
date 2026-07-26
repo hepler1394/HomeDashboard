@@ -1,0 +1,29 @@
+# ── Third-party clone (has its own git history + its own .env secrets, ~69M) ──
+deer-flow/
+
+# ── Secrets / sensitive ──
+# YouTube session cookies exported for yt-grabber
+yt-grabber/cookies.txt
+# Any local env/secret drops (live API keys actually live in %LOCALAPPDATA%\HomeNetDashboard)
+*.env
+.env
+*secret*.json
+*token*.json
+.claude/settings.local.json
+
+# ── Python ──
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# ── Logs & transient output ──
+*.log
+task-check*.txt
+*-install.log
+
+# ── Backups & OS cruft ──
+*.bak
+Thumbs.db
+desktop.ini

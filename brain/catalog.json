@@ -1,0 +1,80 @@
+{
+  "apps": [
+    { "id": "Ollama.Ollama", "name": "Ollama", "category": "AI", "desc": "Run AI models locally on your GPU - free and private", "emoji": "🦙" },
+    { "id": "VideoLAN.VLC", "name": "VLC Media Player", "category": "Media", "desc": "Plays any video or audio file", "emoji": "🎬" },
+    { "id": "Plex.Plex", "name": "Plex Desktop", "category": "Media", "desc": "Stream your Plex library", "emoji": "📺" },
+    { "id": "Plex.Plexamp", "name": "Plexamp", "category": "Media", "desc": "Plex music player", "emoji": "🎵" },
+    { "id": "Plex.PlexMediaServer", "name": "Plex Media Server", "category": "Media", "desc": "Host your own media server", "emoji": "🗄️" },
+    { "id": "clsid2.mpc-hc", "name": "MPC-HC (clsid2)", "category": "Media", "desc": "Lightweight media player classic", "emoji": "▶️" },
+    { "id": "Jellyfin.JellyfinMediaPlayer", "name": "Jellyfin Media Player", "category": "Media", "desc": "Client for Jellyfin servers", "emoji": "🪼" },
+    { "id": "XBMCFoundation.Kodi", "name": "Kodi", "category": "Media", "desc": "Home theater media center", "emoji": "🎦" },
+    { "id": "Spotify.Spotify", "name": "Spotify", "category": "Media", "desc": "Music streaming", "emoji": "🎧" },
+    { "id": "Apple.iTunes", "name": "iTunes", "category": "Media", "desc": "Apple media library and player", "emoji": "🍎" },
+
+    { "id": "Google.Chrome", "name": "Google Chrome", "category": "Browsers", "desc": "Google's web browser", "emoji": "🌐" },
+    { "id": "Mozilla.Firefox", "name": "Mozilla Firefox", "category": "Browsers", "desc": "Open-source web browser", "emoji": "🦊" },
+    { "id": "Brave.Brave", "name": "Brave", "category": "Browsers", "desc": "Privacy-focused browser", "emoji": "🦁" },
+    { "id": "Microsoft.Edge", "name": "Microsoft Edge", "category": "Browsers", "desc": "Microsoft's web browser", "emoji": "🧭" },
+
+    { "id": "Parsec.Parsec", "name": "Parsec", "category": "Remote/Network", "desc": "Low-latency remote desktop and game streaming", "emoji": "🖥️" },
+    { "id": "tailscale.tailscale", "name": "Tailscale", "category": "Remote/Network", "desc": "Zero-config mesh VPN", "emoji": "🔗" },
+    { "id": "PrivateInternetAccess.PrivateInternetAccess", "name": "Private Internet Access", "category": "Remote/Network", "desc": "PIA commercial VPN client", "emoji": "🛡️" },
+    { "id": "RustDesk.RustDesk", "name": "RustDesk", "category": "Remote/Network", "desc": "Open-source remote desktop", "emoji": "🦀" },
+    { "id": "TeamViewer.TeamViewer", "name": "TeamViewer", "category": "Remote/Network", "desc": "Remote support and access", "emoji": "🔵" },
+    { "id": "AnyDeskSoftwareGmbH.AnyDesk", "name": "AnyDesk", "category": "Remote/Network", "desc": "Fast remote desktop", "emoji": "🔴" },
+    { "id": "WireGuard.WireGuard", "name": "WireGuard", "category": "Remote/Network", "desc": "Fast modern VPN tunnel", "emoji": "🔒" },
+
+    { "id": "7zip.7zip", "name": "7-Zip", "category": "Utilities", "desc": "Archive and extract files", "emoji": "🗜️" },
+    { "id": "Microsoft.PowerToys", "name": "PowerToys", "category": "Utilities", "desc": "Windows power-user utilities", "emoji": "🧰" },
+    { "id": "voidtools.Everything", "name": "Everything", "category": "Utilities", "desc": "Instant file search", "emoji": "🔍" },
+    { "id": "Notepad++.Notepad++", "name": "Notepad++", "category": "Utilities", "desc": "Text and code editor", "emoji": "📝" },
+    { "id": "WinDirStat.WinDirStat", "name": "WinDirStat", "category": "Utilities", "desc": "Visualize disk usage", "emoji": "💾" },
+    { "id": "ShareX.ShareX", "name": "ShareX", "category": "Utilities", "desc": "Screenshot and screen recording tool", "emoji": "📸" },
+    { "id": "JAMSoftware.TreeSize.Free", "name": "TreeSize Free", "category": "Utilities", "desc": "Folder size analyzer", "emoji": "🌳" },
+    { "id": "REALiX.HWiNFO", "name": "HWiNFO", "category": "Utilities", "desc": "Hardware monitoring and diagnostics", "emoji": "📊" },
+    { "id": "CrystalDewWorld.CrystalDiskInfo", "name": "CrystalDiskInfo", "category": "Utilities", "desc": "Drive health monitor", "emoji": "🩺" },
+    { "id": "Microsoft.PowerShell", "name": "PowerShell 7", "category": "Utilities", "desc": "Cross-platform shell", "emoji": "⚡" },
+
+    { "id": "Rclone.Rclone", "name": "rclone", "category": "Cloud/Sync", "desc": "Sync files to cloud storage", "emoji": "☁️" },
+    { "id": "Syncthing.Syncthing", "name": "Syncthing", "category": "Cloud/Sync", "desc": "Peer-to-peer file sync", "emoji": "🔄" },
+    { "id": "Syncthing.SyncTrayzor", "name": "SyncTrayzor", "category": "Cloud/Sync", "desc": "Syncthing tray host for Windows", "emoji": "📥" },
+    { "id": "RaiDrive.RaiDrive", "name": "RaiDrive", "category": "Cloud/Sync", "desc": "Mount cloud storage as a drive", "verify": true, "emoji": "🗂️" },
+    { "id": "Google.GoogleDrive", "name": "Google Drive", "category": "Cloud/Sync", "desc": "Google cloud storage sync", "emoji": "📁" },
+    { "id": "Dropbox.Dropbox", "name": "Dropbox", "category": "Cloud/Sync", "desc": "Cloud file storage and sync", "emoji": "📦" },
+
+    { "id": "Microsoft.VisualStudioCode", "name": "Visual Studio Code", "category": "Dev", "desc": "Code editor", "emoji": "🧑‍💻" },
+    { "id": "Git.Git", "name": "Git", "category": "Dev", "desc": "Version control", "emoji": "🔧" },
+    { "id": "Python.Python.3.12", "name": "Python 3.12", "category": "Dev", "desc": "Python runtime", "emoji": "🐍" },
+    { "id": "OpenJS.NodeJS.LTS", "name": "Node.js LTS", "category": "Dev", "desc": "JavaScript runtime", "emoji": "🟢" },
+    { "id": "Microsoft.WindowsTerminal", "name": "Windows Terminal", "category": "Dev", "desc": "Modern terminal app", "emoji": "🖳" },
+    { "id": "GitHub.cli", "name": "GitHub CLI", "category": "Dev", "desc": "GitHub from the command line", "emoji": "🐙" },
+    { "id": "Docker.DockerDesktop", "name": "Docker Desktop", "category": "Dev", "desc": "Containers on Windows", "emoji": "🐳" },
+
+    { "id": "Valve.Steam", "name": "Steam", "category": "Gaming", "desc": "Game store and launcher", "emoji": "🎮" },
+    { "id": "EpicGames.EpicGamesLauncher", "name": "Epic Games Launcher", "category": "Gaming", "desc": "Epic game store", "emoji": "🕹️" },
+    { "id": "GOG.Galaxy", "name": "GOG Galaxy", "category": "Gaming", "desc": "GOG game library", "emoji": "🎯" },
+    { "id": "Nvidia.GeForceExperience", "name": "NVIDIA GeForce Experience", "category": "Gaming", "desc": "GPU drivers and game optimization", "emoji": "💚" },
+
+    { "id": "Discord.Discord", "name": "Discord", "category": "Comms", "desc": "Voice, video and text chat", "emoji": "💬" },
+    { "id": "Telegram.TelegramDesktop", "name": "Telegram", "category": "Comms", "desc": "Messaging app", "emoji": "✈️" },
+    { "id": "Zoom.Zoom", "name": "Zoom", "category": "Comms", "desc": "Video meetings", "emoji": "📹" },
+    { "id": "SlackTechnologies.Slack", "name": "Slack", "category": "Comms", "desc": "Team messaging", "emoji": "💼" },
+    { "id": "WhatsApp.WhatsApp", "name": "WhatsApp", "category": "Comms", "desc": "Messaging app", "emoji": "🟩" },
+
+    { "id": "HandBrake.HandBrake", "name": "HandBrake", "category": "Media Tools", "desc": "Video transcoder", "emoji": "🎞️" },
+    { "id": "OBSProject.OBSStudio", "name": "OBS Studio", "category": "Media Tools", "desc": "Screen recording and streaming", "emoji": "🔴" },
+    { "id": "Gyan.FFmpeg", "name": "FFmpeg", "category": "Media Tools", "desc": "Command-line media toolkit", "emoji": "🛠️" },
+    { "id": "GIMP.GIMP", "name": "GIMP", "category": "Media Tools", "desc": "Image editor", "emoji": "🎨" },
+    { "id": "Audacity.Audacity", "name": "Audacity", "category": "Media Tools", "desc": "Audio editor and recorder", "emoji": "🎙️" }
+  ],
+  "bundles": [
+    { "id": "starter", "name": "Couch PC Starter Pack", "desc": "Everything a new living-room PC needs", "emoji": "🛋️", "apps": ["VideoLAN.VLC", "Parsec.Parsec", "PrivateInternetAccess.PrivateInternetAccess", "tailscale.tailscale", "Google.Chrome"] },
+    { "id": "media", "name": "Media / Plex PC", "desc": "Full media playback and Plex stack", "emoji": "📺", "apps": ["Plex.Plex", "Plex.Plexamp", "VideoLAN.VLC", "clsid2.mpc-hc", "XBMCFoundation.Kodi", "Spotify.Spotify"] },
+    { "id": "essentials", "name": "Essentials (every PC)", "desc": "Baseline utilities plus the home-dashboard reach kit", "emoji": "✅", "apps": ["tailscale.tailscale", "PrivateInternetAccess.PrivateInternetAccess", "Parsec.Parsec", "voidtools.Everything", "7zip.7zip", "Microsoft.PowerToys", "Google.Chrome"] },
+    { "id": "remote", "name": "Remote Access Kit", "desc": "Reach and control this PC from anywhere", "emoji": "🖥️", "apps": ["Parsec.Parsec", "tailscale.tailscale", "PrivateInternetAccess.PrivateInternetAccess", "RustDesk.RustDesk"] },
+    { "id": "cloud", "name": "Cloud & Backup", "desc": "Sync and mount cloud storage", "emoji": "☁️", "apps": ["Rclone.Rclone", "Syncthing.Syncthing", "RaiDrive.RaiDrive"] },
+    { "id": "developer", "name": "Developer", "desc": "Core coding toolchain", "emoji": "🧑‍💻", "apps": ["Microsoft.VisualStudioCode", "Git.Git", "Python.Python.3.12", "OpenJS.NodeJS.LTS", "Microsoft.WindowsTerminal"] },
+    { "id": "gaming", "name": "Gaming", "desc": "Game stores and chat", "emoji": "🎮", "apps": ["Valve.Steam", "EpicGames.EpicGamesLauncher", "Discord.Discord"] },
+    { "id": "creator", "name": "Content Creator", "desc": "Record, encode and capture", "emoji": "🎬", "apps": ["OBSProject.OBSStudio", "HandBrake.HandBrake", "ShareX.ShareX"] }
+  ]
+}

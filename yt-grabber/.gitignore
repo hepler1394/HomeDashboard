@@ -1,0 +1,6 @@
+# Never commit secrets or downloads
+cookies.txt
+config.json
+downloaded_archive.txt
+__pycache__/
+*.pyc

@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YT Grabber</title>
+<style>
+:root{
+  --bg:#0f0f0f;--panel:#181818;--panel2:#212121;--hover:#2a2a2a;--border:#303030;
+  --text:#f1f1f1;--muted:#aaa;--accent:#ff0033;--accent2:#4cc2ff;--blue:#4cc2ff;
+  --ok:#2ba640;--warn:#ffb648;--sidebar:224px;
+}
+svg.ic{width:22px;height:22px;stroke:var(--blue);fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+svg.ic.sm{width:18px;height:18px}
+svg.ic.fill{fill:var(--blue);stroke:none}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Roboto','Segoe UI',system-ui,sans-serif;overflow:hidden}
+input,select,button,textarea{font:inherit;color:inherit}
+select{color:var(--text);cursor:pointer}
+option{background:#1f1f1f;color:#f1f1f1}
+button{cursor:pointer}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:#3a3a3a;border-radius:6px}
+::-webkit-scrollbar-thumb:hover{background:#505050}
+
+/* top bar */
+header{height:56px;display:flex;align-items:center;gap:16px;padding:0 16px;background:var(--bg);position:fixed;top:0;left:0;right:0;z-index:50}
+.burger{background:none;border:0;font-size:20px;color:var(--text);width:40px;height:40px;border-radius:50%}
+.burger:hover{background:var(--hover)}
+.logo{font-size:20px;font-weight:800;letter-spacing:-.5px;white-space:nowrap;display:flex;align-items:center;gap:6px}
+.logo .yt{background:var(--accent);color:#fff;padding:2px 7px;border-radius:6px;font-size:16px}
+.searchbar{flex:1;max-width:640px;display:flex;margin:0 auto;position:relative;border-radius:40px;padding:2px;
+  background:linear-gradient(100deg,#4cc2ff,#5b9dff,#a56bff,#4cc2ff);background-size:300% 100%;
+  box-shadow:0 0 16px rgba(76,194,255,.30);animation:ringflow 8s linear infinite;transition:box-shadow .2s}
+.searchbar:focus-within{box-shadow:0 0 26px rgba(76,194,255,.55)}
+@keyframes ringflow{0%{background-position:0% 50%}100%{background-position:300% 50%}}
+.searchbar input{flex:1;background:var(--panel);border:0;border-radius:38px 0 0 38px;padding:11px 18px;font-size:15px;outline:none}
+.searchbar .go{background:var(--panel);border:0;border-radius:0 38px 38px 0;padding:0 20px;display:flex;align-items:center}
+.searchbar .go:hover{background:var(--panel2)}
+.topicons{display:flex;align-items:center;gap:4px;margin-left:auto}
+.iconbtn{background:none;border:0;color:var(--text);width:40px;height:40px;border-radius:50%;font-size:18px;position:relative;display:flex;align-items:center;justify-content:center}
+.iconbtn:hover{background:var(--hover)}
+.badge{position:absolute;top:4px;right:4px;background:var(--accent);color:#fff;font-size:10px;font-weight:700;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 4px}
+
+/* layout */
+.body{display:flex;padding-top:56px;height:100vh}
+nav{width:var(--sidebar);flex-shrink:0;background:var(--bg);overflow-y:auto;padding:12px 0;transition:width .2s}
+nav.collapsed{width:72px}
+.navitem{display:flex;align-items:center;gap:24px;padding:10px 24px;font-size:14px;border-radius:10px;margin:2px 8px;color:var(--text)}
+nav.collapsed .navitem{flex-direction:column;gap:4px;padding:14px 0;font-size:10px;text-align:center}
+.navitem .ic{font-size:20px;width:22px;text-align:center}
+.navitem:hover{background:var(--hover)}
+.navitem.active{background:var(--panel2);font-weight:600}
+.navsep{height:1px;background:var(--border);margin:12px 16px}
+.navlabel{font-size:12px;color:var(--muted);padding:8px 24px 4px;text-transform:uppercase;letter-spacing:.05em}
+nav.collapsed .navlabel{display:none}
+
+main{flex:1;overflow-y:auto;padding:20px 28px 60px}
+
+/* chips row */
+.chips{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;align-items:center}
+.chip{background:var(--panel2);border:0;border-radius:8px;padding:8px 14px;font-size:14px;white-space:nowrap}
+.chip:hover{background:var(--hover)}
+.chip.on{background:var(--text);color:#0f0f0f;font-weight:600}
+.chip select{background:none;border:0;font-size:14px;outline:none}
+.chip.ck{display:flex;align-items:center;gap:7px}
+.chip.ai{position:relative;background:var(--panel2);color:var(--text);font-weight:600;display:inline-flex;align-items:center;gap:7px;border-radius:8px;padding:2px;
+  background:linear-gradient(100deg,#4cc2ff,#5b9dff,#a56bff,#4cc2ff);background-size:300% 100%;animation:ringflow 8s linear infinite;box-shadow:0 0 10px rgba(76,194,255,.25)}
+.chip.ai>span.ailabel{display:inline-flex;align-items:center;gap:7px;background:var(--panel2);border-radius:6px;padding:6px 12px}
+.chip.ai:hover{box-shadow:0 0 16px rgba(76,194,255,.45)}
+.ptitle .ic{width:24px;height:24px}
+.tlink{color:var(--blue);cursor:pointer;display:inline-flex;align-items:center;gap:4px}
+.tlink svg{width:13px;height:13px;stroke:var(--blue)}
+
+/* grid */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px 16px}
+.card{cursor:pointer;position:relative;border-radius:12px;overflow:hidden}
+.thumb{position:relative;border-radius:12px;overflow:hidden;background:#000;aspect-ratio:16/9}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block;transition:.2s}
+.card:hover .thumb img{transform:scale(1.03)}
+.dur{position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,.85);font-size:12px;font-weight:600;padding:1px 6px;border-radius:5px}
+.check{position:absolute;top:8px;left:8px;width:26px;height:26px;border-radius:7px;background:rgba(0,0,0,.6);border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:15px;color:transparent;transition:.15s;opacity:0}
+.card:hover .check,.card.sel .check{opacity:1}
+.card.sel{outline:3px solid var(--accent2);outline-offset:2px;border-radius:12px}
+.card.sel .check{background:var(--accent2);border-color:var(--accent2);color:#fff}
+.play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:44px;color:#fff;opacity:0;transition:.15s;text-shadow:0 2px 12px rgba(0,0,0,.7)}
+.card:hover .play{opacity:.95}
+.dlbadge{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.8);color:var(--ok);border:1px solid var(--ok);font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px}
+.info{display:flex;gap:12px;padding:12px 2px 0}
+.av{width:36px;height:36px;border-radius:50%;background:var(--panel2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:var(--muted);text-transform:uppercase}
+.tt{font-size:14px;font-weight:600;line-height:1.4;max-height:40px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.meta{font-size:13px;color:var(--muted);margin-top:3px;line-height:1.4}
+.empty{grid-column:1/-1;text-align:center;color:var(--muted);padding:60px 20px;font-size:15px;line-height:1.7}
+.spin{display:inline-block;width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--accent2);border-radius:50%;animation:sp .7s linear infinite;vertical-align:-3px}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* select action bar */
+.actionbar{position:fixed;bottom:0;left:var(--sidebar);right:0;background:var(--panel);border-top:1px solid var(--border);padding:12px 28px;display:none;align-items:center;gap:16px;z-index:40}
+.actionbar.show{display:flex}
+.btn{background:var(--panel2);border:1px solid var(--border);border-radius:20px;padding:9px 18px;font-size:14px;font-weight:500}
+.btn:hover{background:var(--hover)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.btn.primary:hover{filter:brightness(1.1)}
+.btn.blue{background:var(--accent2);border-color:var(--accent2);color:#031b33;font-weight:600}
+
+/* page title */
+.ptitle{font-size:22px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:12px}
+.sub{font-size:14px;color:var(--muted);font-weight:400}
+
+/* downloads drawer */
+.drawer{position:fixed;top:56px;right:0;width:380px;height:calc(100vh - 56px);background:var(--panel);border-left:1px solid var(--border);transform:translateX(100%);transition:.25s;z-index:45;display:flex;flex-direction:column}
+.drawer.show{transform:translateX(0)}
+.drawer h3{padding:16px;font-size:16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
+.dstats{padding:10px 16px;font-size:12px;color:var(--muted);line-height:1.7;border-bottom:1px solid var(--border)}
+.jobs{flex:1;overflow-y:auto;padding:10px}
+.job{background:var(--panel2);border-radius:10px;padding:10px;margin-bottom:8px;display:flex;gap:10px}
+.job img{width:80px;height:45px;object-fit:cover;border-radius:6px;background:#000}
+.jt{font-size:12.5px;font-weight:600;line-height:1.3;max-height:33px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.js{font-size:11.5px;color:var(--muted);margin-top:3px}
+.pbar{height:4px;background:var(--border);border-radius:2px;margin-top:6px;overflow:hidden}
+.pbar div{height:100%;background:var(--accent2);transition:width .4s}
+.job.done .pbar div{background:var(--ok)}.job.error .pbar div{background:var(--accent)}
+.jbtn{background:none;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:11px;padding:2px 8px;margin-top:5px}
+.jbtn:hover{border-color:var(--accent2);color:var(--text)}
+
+/* player modal */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.9);display:none;align-items:center;justify-content:center;z-index:100;flex-direction:column;padding:24px}
+.modal.show{display:flex}
+.modal video,.modal iframe{width:min(92vw,1100px);aspect-ratio:16/9;background:#000;border-radius:12px;border:0}
+.modal .ptitle2{color:#fff;margin-top:14px;font-size:16px;max-width:1100px;text-align:center}
+.modalclose{position:absolute;top:20px;right:26px;font-size:30px;color:#fff;background:none;border:0}
+
+/* settings modal */
+.smodal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-start;justify-content:center;z-index:110;padding:40px 16px;overflow-y:auto}
+.smodal.show{display:flex}
+.sbox{background:var(--panel);border:1px solid var(--border);border-radius:16px;width:100%;max-width:720px;padding:24px}
+.sbox h2{font-size:20px;margin-bottom:18px}
+.tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:12px}
+.tab{padding:8px 15px;border-radius:8px;font-size:14px;color:var(--muted);background:none;border:0}
+.tab.active{background:var(--panel2);color:var(--text)}
+.pane{display:none}.pane.active{display:block}
+.frow{margin-bottom:16px}
+.frow label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+.frow input,.frow select{width:100%;background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;outline:none}
+.frow input:focus,.frow select:focus{border-color:var(--accent2)}
+.checkgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ci{display:flex;gap:9px;align-items:flex-start;background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:11px 12px;font-size:13.5px}
+.ci input{margin-top:2px;accent-color:var(--accent2)}
+.ci small{display:block;color:var(--muted);font-size:11px;margin-top:2px}
+.keyrow{display:flex;gap:8px;margin-bottom:8px}
+.keyrow input{flex:1;font-family:monospace;font-size:12px}
+.mfoot{display:flex;justify-content:flex-end;gap:10px;margin-top:22px}
+.note{font-size:12px;color:var(--muted);line-height:1.6;margin-top:8px}
+
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--border);padding:12px 22px;border-radius:10px;display:none;z-index:200;box-shadow:0 8px 30px rgba(0,0,0,.5);font-size:14px}
+.catbadge{display:inline-block;background:rgba(76,194,255,.15);color:var(--blue);border:1px solid rgba(76,194,255,.4);font-size:11px;padding:1px 8px;border-radius:10px}
+.watchcard{display:flex;align-items:center;gap:12px;background:var(--panel2);border-radius:10px;padding:10px 14px;margin-bottom:8px}
+.watchcard img{width:60px;height:34px;object-fit:cover;border-radius:6px;background:#000}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><defs>
+  <symbol id="i-menu" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></symbol>
+  <symbol id="i-ai" viewBox="0 0 24 24"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.7 1.8L21.5 17.5l-1.8.7L19 20l-.7-1.8L16.5 17.5l1.8-.7z"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></symbol>
+  <symbol id="i-tv" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="15" rx="2"/><polyline points="17 2 12 7 7 2"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><polygon points="6 4 20 12 6 20 6 4"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></symbol>
+  <symbol id="i-music" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></symbol>
+  <symbol id="i-film" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/></symbol>
+  <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z"/></symbol>
+</defs></svg>
+
+<header>
+  <button class="burger" onclick="toggleNav()"><svg class="ic"><use href="#i-menu"/></svg></button>
+  <div class="logo"><span class="yt">YT</span>Grabber</div>
+  <div class="searchbar">
+    <input id="q" placeholder="Search or paste a channel / playlist / video URL">
+    <button class="go" onclick="doSearch()"><svg class="ic sm"><use href="#i-search"/></svg></button>
+  </div>
+  <div class="topicons">
+    <button class="iconbtn" title="AI expand search" onclick="aiExpand()"><svg class="ic sm fill"><use href="#i-ai"/></svg></button>
+    <button class="iconbtn" title="Notifications" onclick="go('notifs')"><svg class="ic sm"><use href="#i-bell"/></svg><span class="badge" id="notifBadge" style="display:none">0</span></button>
+    <button class="iconbtn" title="Downloads" onclick="toggleDrawer()"><svg class="ic sm"><use href="#i-download"/></svg><span class="badge" id="dlBadge" style="display:none">0</span></button>
+    <button class="iconbtn" title="Settings" onclick="openSettings()"><svg class="ic sm"><use href="#i-settings"/></svg></button>
+  </div>
+</header>
+
+<div class="body">
+  <nav id="nav">
+    <div class="navitem active" data-view="search" onclick="go('search')"><svg class="ic"><use href="#i-search"/></svg>Search</div>
+    <div class="navitem" data-view="library" onclick="go('library')"><svg class="ic"><use href="#i-folder"/></svg>Library</div>
+    <div class="navitem" data-view="channels" onclick="go('channels')"><svg class="ic"><use href="#i-tv"/></svg>Channels</div>
+    <div class="navitem" data-view="notifs" onclick="go('notifs')"><svg class="ic"><use href="#i-bell"/></svg>Notifications</div>
+    <div class="navsep"></div>
+    <div class="navitem" onclick="toggleDrawer()"><svg class="ic"><use href="#i-download"/></svg>Downloads</div>
+    <div class="navitem" onclick="openSettings()"><svg class="ic"><use href="#i-settings"/></svg>Settings</div>
+    <div class="navsep"></div>
+    <div class="navlabel">Tips</div>
+    <div class="navitem" style="font-size:12px;color:var(--muted);cursor:default"><svg class="ic"><use href="#i-bulb"/></svg>Paste a channel URL to grab every upload</div>
+  </nav>
+
+  <main id="main">
+    <!-- SEARCH VIEW -->
+    <div id="view-search">
+      <div class="chips">
+        <div class="chip ck"><input type="checkbox" id="cconly" onchange="doSearch()">CC only</div>
+        <div class="chip"><select id="maxres" onchange="if(results.length)doSearch()">
+          <option value="25">25</option><option value="50" selected>50</option>
+          <option value="100">100</option><option value="200">200</option></select>&nbsp;results</div>
+        <div class="chip" onclick="selectAll(true)">Select all</div>
+        <div class="chip" onclick="selectAll(false)">Clear</div>
+        <div class="chip ai" onclick="aiSelect()"><span class="ailabel"><svg class="ic sm fill" style="width:15px;height:15px"><use href="#i-ai"/></svg>AI select</span></div>
+      </div>
+      <div class="grid" id="grid">
+        <div class="empty">Search a subject, or paste a channel / playlist / video URL.</div>
+      </div>
+    </div>
+
+    <!-- LIBRARY VIEW -->
+    <div id="view-library" style="display:none">
+      <div class="ptitle"><svg class="ic"><use href="#i-folder"/></svg>Library <span class="sub" id="libcount"></span>
+        <button class="btn" style="margin-left:auto;display:flex;align-items:center;gap:6px" onclick="loadLibrary()"><svg class="ic sm"><use href="#i-refresh"/></svg>Refresh</button></div>
+      <div class="chips">
+        <div class="chip ck" style="flex:1;min-width:220px;max-width:360px;padding:0">
+          <svg class="ic sm" style="margin-left:12px"><use href="#i-search"/></svg>
+          <input id="libsearch" oninput="renderLib()" placeholder="Search library…" style="flex:1;background:none;border:0;outline:none;padding:8px 12px 8px 6px;color:var(--text)"></div>
+        <div class="chip"><select id="libcat" onchange="renderLib()"><option value="">All categories</option></select></div>
+        <div class="chip"><select id="libtype" onchange="renderLib()"><option value="">All types</option><option value="video">Video</option><option value="audio">Audio</option></select></div>
+        <div class="chip"><select id="libsort" onchange="renderLib()">
+          <option value="new">Newest</option><option value="old">Oldest</option>
+          <option value="big">Largest</option><option value="small">Smallest</option>
+          <option value="az">Name A–Z</option></select></div>
+        <div class="chip ai" onclick="aiLibrary()"><span class="ailabel"><svg class="ic sm fill" style="width:15px;height:15px"><use href="#i-ai"/></svg>Smart search</span></div>
+        <div class="chip" onclick="categorizeLibrary()" title="Have your local model sort any un-categorized files">Categorize with AI</div>
+        <div class="chip" id="libclear" style="display:none" onclick="clearLibFilters()">Clear filters</div>
+      </div>
+      <div class="grid" id="libgrid"><div class="empty">Loading…</div></div>
+    </div>
+
+    <!-- CHANNELS VIEW -->
+    <div id="view-channels" style="display:none">
+      <div class="ptitle"><svg class="ic"><use href="#i-tv"/></svg>Watched channels</div>
+      <div class="chips">
+        <input id="watchurl" placeholder="Paste a channel URL (youtube.com/@name)" style="flex:1;min-width:280px;background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;outline:none">
+        <button class="btn blue" onclick="addWatch()">+ Watch channel</button>
+        <button class="btn" style="display:inline-flex;align-items:center;gap:6px" onclick="checkNow()"><svg class="ic sm"><use href="#i-refresh"/></svg>Check now</button>
+      </div>
+      <div id="watchlist" style="margin-top:14px"></div>
+    </div>
+
+    <!-- NOTIFICATIONS VIEW -->
+    <div id="view-notifs" style="display:none">
+      <div class="ptitle"><svg class="ic"><use href="#i-bell"/></svg>New uploads <button class="btn" style="margin-left:auto" onclick="markSeen()">Mark all seen</button></div>
+      <div class="grid" id="notifgrid"><div class="empty">No new uploads yet. Add channels in the Channels tab.</div></div>
+    </div>
+  </main>
+</div>
+
+<div class="actionbar" id="actionbar">
+  <b><span id="selcount">0</span> selected</b>
+  <div style="flex:1"></div>
+  <button class="btn primary" style="display:flex;align-items:center;gap:8px" onclick="downloadSelected()"><svg class="ic sm" style="stroke:#fff"><use href="#i-download"/></svg>Download best quality</button>
+</div>
+
+<!-- Downloads drawer -->
+<div class="drawer" id="drawer">
+  <h3>Downloads
+    <span><button class="jbtn" onclick="cancelAll()">Cancel all</button>
+    <button class="jbtn" onclick="clearJobs()">Clear</button></span></h3>
+  <div class="dstats" id="dstats">Queue is empty</div>
+  <div class="jobs" id="jobs"></div>
+</div>
+
+<!-- Player modal -->
+<div class="modal" id="player" onclick="if(event.target.id==='player')closePlayer()">
+  <button class="modalclose" onclick="closePlayer()"><svg class="ic" style="width:26px;height:26px;stroke:#fff"><use href="#i-x"/></svg></button>
+  <div id="playerslot"></div>
+  <div class="ptitle2" id="playertitle"></div>
+</div>
+
+<!-- Settings modal -->
+<div class="smodal" id="settings">
+  <div class="sbox">
+    <h2>Settings</h2>
+    <div class="tabs">
+      <button class="tab active" data-p="general" onclick="stab(this)">General</button>
+      <button class="tab" data-p="quality" onclick="stab(this)">Download</button>
+      <button class="tab" data-p="cats" onclick="stab(this)">Categories</button>
+      <button class="tab" data-p="keys" onclick="stab(this)">YouTube API</button>
+      <button class="tab" data-p="ai" onclick="stab(this)">AI providers</button>
+    </div>
+
+    <div class="pane active" id="p-general">
+      <div class="frow"><label>Search engine</label>
+        <select id="s_engine">
+          <option value="ytdlp">yt-dlp — accurate, finds exact titles, no quota (recommended)</option>
+          <option value="api">YouTube Data API — needs a key, quota-limited</option>
+        </select></div>
+      <div class="frow"><label>Download location</label><input id="s_dir"></div>
+      <div class="frow"><label>Concurrent downloads (4–6 recommended)</label><input type="number" id="s_conc" min="1" max="16"></div>
+      <div class="frow"><label>Filename template (yt-dlp syntax)</label><input id="s_tmpl"></div>
+      <div class="frow"><label>Speed limit (KB/s, 0 = unlimited)</label><input type="number" id="s_rate" min="0"></div>
+      <div class="frow"><label>Cookies from browser (for your own private/unlisted videos)</label>
+        <select id="s_cookies_browser"><option value="">— off —</option>
+          <option value="chrome">Chrome</option><option value="edge">Edge</option>
+          <option value="firefox">Firefox</option><option value="brave">Brave</option>
+          <option value="opera">Opera</option></select></div>
+      <div class="frow"><label>Or cookies.txt path (overrides browser)</label><input id="s_cookie_file" placeholder="cookies.txt"></div>
+      <div class="frow"><label>Check watched channels every (minutes)</label><input type="number" id="s_watch" min="5"></div>
+      <label class="ci" style="max-width:100%"><input type="checkbox" id="s_autodl"><span>Auto-download new uploads<small>Master switch. When on, channels with their per-channel toggle enabled download automatically the moment they post. Off by default.</small></span></label>
+      <label class="ci" style="max-width:100%;margin-top:10px"><input type="checkbox" id="s_autocat"><span>Auto-categorize downloads with AI<small>Your active model sorts each finished download into a category. On by default.</small></span></label>
+    </div>
+
+    <div class="pane" id="p-quality"><div class="checkgrid" id="ycheck"></div>
+      <div class="note">Best quality = highest-res video + best audio, merged (uses ffmpeg).</div></div>
+
+    <div class="pane" id="p-cats">
+      <div class="frow"><label>Library categories — one per line. Your AI model sorts each download into one of these.</label>
+        <textarea id="s_cats" rows="12" style="width:100%;background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;outline:none;resize:vertical;font-size:14px;line-height:1.6"></textarea></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn" onclick="resetCats()">Reset to defaults</button>
+        <span class="note" style="margin:0;align-self:center">Keep a catch-all like "Other" last. After saving, use "Categorize with AI" in Library to re-sort with the new list.</span>
+      </div>
+    </div>
+
+    <div class="pane" id="p-keys">
+      <label style="font-size:13px;color:var(--muted)">Only needed for the API engine. Auto-rotates on quota.</label>
+      <div id="keylist" style="margin-top:10px"></div>
+      <button class="btn" onclick="addKeyRow('')">+ Add key</button></div>
+
+    <div class="pane" id="p-ai">
+      <div class="frow"><label>Active provider (used by AI expand + AI select)</label>
+        <select id="s_ai_active"><option value="">— none —</option>
+          <option value="local">Local model (Ollama / LM Studio / Qwen)</option>
+          <option value="deepseek">DeepSeek</option><option value="gemini">Google Gemini</option>
+          <option value="anthropic">Anthropic (Claude)</option><option value="openai">OpenAI</option>
+          <option value="openrouter">OpenRouter</option><option value="groq">Groq</option></select></div>
+      <div id="aiproviders"></div></div>
+
+    <div class="mfoot"><button class="btn" onclick="closeSettings()">Cancel</button>
+      <button class="btn blue" onclick="saveSettings()">Save</button></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+let results=[],selected=new Set(),cfg=null,lastQuery="",view="search";
+const $=id=>document.getElementById(id);
+const esc=s=>(s||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function toast(m,ms=3000){const t=$("toast");t.textContent=m;t.style.display="block";clearTimeout(t._h);t._h=setTimeout(()=>t.style.display="none",ms);}
+function toggleNav(){$("nav").classList.toggle("collapsed");}
+function toggleDrawer(){$("drawer").classList.toggle("show");}
+
+function go(v){
+  view=v;
+  ["search","library","channels","notifs"].forEach(x=>$("view-"+x).style.display=x===v?"block":"none");
+  document.querySelectorAll(".navitem[data-view]").forEach(n=>n.classList.toggle("active",n.dataset.view===v));
+  if(v==="library")loadLibrary();
+  if(v==="channels")loadWatched();
+  if(v==="notifs"){loadNotifs();markSeen();}
+}
+
+/* ---------- search ---------- */
+const isUrl=s=>/(youtube\.com|youtu\.be)\//i.test(s);
+async function doSearch(){
+  const q=$("q").value.trim();if(!q)return;
+  go("search");
+  $("grid").innerHTML='<div class="empty"><span class="spin"></span> Searching…</div>';
+  selected.clear();updateBar();
+  try{
+    let url=isUrl(q)?`/api/channel?url=${encodeURIComponent(q)}&max=500`
+      :`/api/search?q=${encodeURIComponent(q)}&max=${$("maxres").value}&cc=${$("cconly").checked?1:0}`;
+    const d=await (await fetch(url)).json();
+    if(d.error)throw new Error(d.error);
+    results=d.results;lastQuery=d.query||q;
+    renderGrid();
+    toast(`${results.length} found${isUrl(q)?" — "+lastQuery:""}`);
+  }catch(e){$("grid").innerHTML=`<div class="empty">${esc(e.message)}</div>`;}
+}
+function card(v,dl){
+  return `<div class="card ${selected.has(v.id)?"sel":""}" data-id="${v.id}">
+    <div class="thumb" onclick="toggleSel('${v.id}')">
+      <img src="${v.thumbnail}" loading="lazy">
+      <div class="check"><svg style="width:15px;height:15px;stroke:#fff;fill:none;stroke-width:3"><use href="#i-check"/></svg></div>
+      <div class="dur">${v.duration||""}</div>
+      ${v.downloaded?'<div class="dlbadge">saved</div>':""}
+    </div>
+    <div class="info">
+      <div class="av">${esc((v.channel||"?")[0])}</div>
+      <div style="min-width:0">
+        <div class="tt">${esc(v.title)}</div>
+        <div class="meta">${esc(v.channel||"")}</div>
+        <div class="meta">${v.views?v.views+" views":""}${v.published?" · "+v.published:""}
+          <span class="tlink" onclick="event.stopPropagation();previewYt('${v.id}','${esc(v.title).replace(/'/g,"")}')"><svg><use href="#i-play"/></svg>preview</span></div>
+      </div>
+    </div></div>`;
+}
+function renderGrid(){
+  $("grid").innerHTML=results.length?results.map(v=>card(v)).join("")
+    :'<div class="empty">No results.</div>';
+}
+function toggleSel(id){selected.has(id)?selected.delete(id):selected.add(id);
+  document.querySelector(`.card[data-id="${id}"]`)?.classList.toggle("sel",selected.has(id));updateBar();}
+function selectAll(on){selected=on?new Set(results.map(v=>v.id)):new Set();renderGrid();updateBar();}
+function updateBar(){$("selcount").textContent=selected.size;$("actionbar").classList.toggle("show",selected.size>0);}
+
+/* ---------- AI ---------- */
+async function aiExpand(){
+  const q=$("q").value.trim();if(!q){toast("Type an idea first");return;}
+  toast("AI thinking…",6000);
+  try{
+    const d=await (await fetch("/api/ai_expand",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt:q})})).json();
+    if(d.error)throw new Error(d.error);
+    const c=$("grid");go("search");
+    c.innerHTML='<div class="empty">AI suggests — click one:<br><br>'+
+      d.queries.map(s=>`<button class="chip ai" style="margin:4px" onclick="$('q').value=this.textContent;doSearch()">${esc(s)}</button>`).join("")+'</div>';
+  }catch(e){toast("AI: "+e.message,5000);}
+}
+async function aiSelect(){
+  if(!results.length){toast("Search first");return;}
+  const intent=prompt("What should AI pick?",lastQuery);if(!intent)return;
+  toast("AI choosing…",8000);
+  try{
+    const d=await (await fetch("/api/ai_select",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({intent,videos:results.map(v=>({id:v.id,title:v.title,channel:v.channel,duration:v.duration}))})})).json();
+    if(d.error)throw new Error(d.error);
+    selected=new Set(d.ids);renderGrid();updateBar();
+    toast(`Selected ${d.ids.length} of ${results.length}`);
+  }catch(e){toast("AI: "+e.message,5000);}
+}
+
+/* ---------- downloads ---------- */
+async function downloadSelected(){
+  const vids=results.filter(v=>selected.has(v.id));if(!vids.length)return;
+  const d=await (await fetch("/api/download",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({videos:vids,subfolder:lastQuery})})).json();
+  toast(`Queued ${d.queued.length}${d.skipped?` · skipped ${d.skipped} already saved`:""}`);
+  $("drawer").classList.add("show");
+  selected.clear();renderGrid();updateBar();
+}
+async function pollJobs(){
+  try{
+    const d=await (await fetch("/api/progress")).json();
+    const n=s=>d.jobs.filter(j=>s.includes(j.status)).length;
+    const active=n(["downloading","starting","processing","queued"]);
+    const b=$("dlBadge");if(active){b.style.display="flex";b.textContent=active;}else b.style.display="none";
+    $("dstats").textContent=d.jobs.length?`${n(["downloading","starting","processing"])} active · ${n(["queued"])} queued · ${n(["done"])} done · ${n(["skipped"])} skipped · ${n(["error"])} failed`:"Queue is empty";
+    $("jobs").innerHTML=d.jobs.map(j=>{
+      const st=j.status==="downloading"?`${j.progress}% · ${j.speed} · ETA ${j.eta}`
+        :j.status==="error"?("Failed: "+esc(j.error)):j.status==="done"?"Done"
+        :j.status==="skipped"?"Already saved":j.status==="processing"?"Processing…"
+        :j.status==="cancelled"?"Cancelled":j.status[0].toUpperCase()+j.status.slice(1);
+      const cc=["queued","starting","downloading"].includes(j.status);
+      const rr=["error","cancelled"].includes(j.status);
+      return `<div class="job ${j.status}"><img src="${j.thumbnail}">
+        <div style="flex:1;min-width:0"><div class="jt">${esc(j.title)}</div><div class="js">${st}</div>
+        <div class="pbar"><div style="width:${j.progress}%"></div></div>
+        ${cc?`<button class="jbtn" onclick="jobAct('${j.id}','cancel')">Cancel</button>`:""}
+        ${rr?`<button class="jbtn" onclick="jobAct('${j.id}','retry')">Retry</button>`:""}</div></div>`;
+    }).join("");
+  }catch(e){}
+  setTimeout(pollJobs,1200);
+}
+async function clearJobs(){await fetch("/api/jobs/clear",{method:"POST"});}
+async function cancelAll(){await fetch("/api/jobs/cancel_all",{method:"POST"});toast("Cancelling…");}
+async function jobAct(id,a){await fetch(`/api/jobs/${id}/${a}`,{method:"POST"});}
+
+/* ---------- player ---------- */
+function previewYt(id,title){
+  $("playerslot").innerHTML=`<iframe src="https://www.youtube-nocookie.com/embed/${id}?autoplay=1" allow="autoplay;encrypted-media" allowfullscreen></iframe>`;
+  $("playertitle").textContent=title||"";$("player").classList.add("show");
+}
+function playLocal(url,title){
+  $("playerslot").innerHTML=`<video src="${url}" controls autoplay></video>`;
+  $("playertitle").textContent=title||"";$("player").classList.add("show");
+}
+function closePlayer(){$("playerslot").innerHTML="";$("player").classList.remove("show");}
+document.addEventListener("keydown",e=>{if(e.key==="Escape"){closePlayer();}});
+
+/* ---------- library ---------- */
+let libItems=[],aiLibSet=null,libCats=[];
+async function loadLibrary(){
+  $("libgrid").innerHTML='<div class="empty"><span class="spin"></span> Loading…</div>';
+  const d=await (await fetch("/api/library")).json();
+  libItems=d.items;aiLibSet=null;libCats=d.categories||[];
+  // dropdown = the fixed AI categories, plus Uncategorized
+  const sel=$("libcat"),cur=sel.value;
+  sel.innerHTML='<option value="">All categories</option>'
+    +libCats.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join("")
+    +'<option value="__uncat">Uncategorized</option>';
+  sel.value=cur;
+  renderLib();
+}
+async function categorizeLibrary(){
+  toast("Local model is sorting your library…",6000);
+  const d=await (await fetch("/api/categorize_library",{method:"POST"})).json();
+  if(!d.queued){toast("Everything is already categorized");return;}
+  toast(`Categorizing ${d.queued} file(s) in the background…`,5000);
+  // refresh a few times as results come in
+  let n=0;const t=setInterval(async()=>{await loadLibrary();if(++n>=Math.min(d.queued+2,12))clearInterval(t);},6000);
+}
+function clearLibFilters(){$("libsearch").value="";$("libcat").value="";$("libtype").value="";aiLibSet=null;renderLib();}
+function renderLib(){
+  if(!libItems.length){$("libgrid").innerHTML='<div class="empty">No downloads yet. Grab some videos!</div>';$("libcount").textContent="";return;}
+  const q=$("libsearch").value.trim().toLowerCase(),cat=$("libcat").value,type=$("libtype").value,sort=$("libsort").value;
+  let items=libItems.filter(it=>{
+    if(cat==="__uncat"&&it.category)return false;
+    if(cat&&cat!=="__uncat"&&it.category!==cat)return false;
+    if(type==="audio"&&!it.audio)return false;
+    if(type==="video"&&it.audio)return false;
+    if(q&&!(it.name.toLowerCase().includes(q)||(it.folder||"").toLowerCase().includes(q)||(it.category||"").toLowerCase().includes(q)))return false;
+    if(aiLibSet&&!aiLibSet.has(it.rel))return false;
+    return true;
+  });
+  const s={new:(a,b)=>b.mtime-a.mtime,old:(a,b)=>a.mtime-b.mtime,big:(a,b)=>b.size_mb-a.size_mb,small:(a,b)=>a.size_mb-b.size_mb,az:(a,b)=>a.name.localeCompare(b.name)};
+  items.sort(s[sort]||s.new);
+  $("libclear").style.display=(q||cat||type||aiLibSet)?"block":"none";
+  $("libcount").textContent=`${items.length}${items.length!==libItems.length?" of "+libItems.length:""} files`;
+  $("libgrid").innerHTML=items.length?items.map(it=>`
+    <div class="card">
+      <div class="thumb" onclick="playLocal('${it.url}','${esc(it.name).replace(/'/g,"")}')">
+        ${it.thumb?`<img src="${it.thumb}" loading="lazy">`:`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#555"><svg class="ic" style="width:46px;height:46px;stroke:#666"><use href="#i-${it.audio?"music":"film"}"/></svg></div>`}
+        <div class="play"><svg class="ic" style="width:52px;height:52px;stroke:#fff;fill:rgba(0,0,0,.3)"><use href="#i-play"/></svg></div>
+      </div>
+      <div class="info"><div style="min-width:0">
+        <div class="tt">${esc(it.name)}</div>
+        <div class="meta">${it.category?`<span class="catbadge">${esc(it.category)}</span> `:""}${it.size_mb} MB · plays in browser</div>
+        <div class="meta"><span class="tlink" onclick="reveal('${esc(it.rel).replace(/'/g,"")}')"><svg><use href="#i-folder"/></svg>show in folder</span></div>
+      </div></div>
+    </div>`).join(""):'<div class="empty">Nothing matches these filters.</div>';
+}
+async function aiLibrary(){
+  if(!libItems.length){toast("Library is empty");return;}
+  const intent=prompt("Describe what you're looking for in your library:");if(!intent)return;
+  toast("AI searching your library…",8000);
+  try{
+    const d=await (await fetch("/api/ai_select",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({intent,videos:libItems.map(it=>({id:it.rel,title:it.name,channel:it.folder,duration:""}))})})).json();
+    if(d.error)throw new Error(d.error);
+    aiLibSet=new Set(d.ids);renderLib();
+    toast(`AI matched ${d.ids.length} file(s)`);
+  }catch(e){toast("AI: "+e.message,5000);}
+}
+async function reveal(rel){await fetch("/api/reveal",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({rel})});}
+
+/* ---------- channels / notifications ---------- */
+async function loadWatched(){
+  if(!cfg)cfg=await (await fetch("/api/settings")).json();
+  const d=await (await fetch("/api/watched")).json();
+  const master=cfg&&cfg.auto_download_new;
+  $("watchlist").innerHTML=d.channels.length?d.channels.map(c=>`
+    <div class="watchcard"><img src="${c.thumbnail||""}">
+      <div style="flex:1"><b>${esc(c.title)}</b></div>
+      <label class="ci" style="border:0;background:none;padding:0;margin-right:10px" title="${master?"":"Enable the master switch in Settings first"}">
+        <input type="checkbox" ${c.auto_download?"checked":""} ${master?"":"disabled"} onchange="setAuto('${c.channel_id}',this.checked)">
+        <span style="font-size:12px">Auto-download</span></label>
+      <button class="jbtn" onclick="unwatch('${c.channel_id}')">Remove</button></div>`).join("")
+    :'<div class="empty">No channels watched yet. Paste a channel URL above.</div>';
+}
+async function addWatch(){
+  const url=$("watchurl").value.trim();if(!url)return;
+  toast("Adding…",5000);
+  const d=await (await fetch("/api/watch",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({url})})).json();
+  if(d.error){toast(d.error,5000);return;}
+  $("watchurl").value="";toast(d.already?"Already watching":"Now watching "+(d.channel.title||""));loadWatched();
+}
+async function unwatch(id){await fetch("/api/watch/"+id,{method:"DELETE"});loadWatched();}
+async function setAuto(id,on){await fetch(`/api/watch/${id}/auto`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({on})});toast(on?"Auto-download on for this channel":"Auto-download off");}
+async function checkNow(){toast("Checking…",6000);const d=await (await fetch("/api/check_now",{method:"POST"})).json();toast(d.new?`${d.new} new upload(s)!`:"No new uploads");pollNotifs();}
+async function loadNotifs(){
+  const d=await (await fetch("/api/notifications")).json();
+  $("notifgrid").innerHTML=d.items.length?d.items.map(v=>card({
+    id:v.video_id,title:v.title,channel:v.channel,thumbnail:v.thumbnail,published:v.published,views:"",duration:"",downloaded:false
+  })).join(""):'<div class="empty">No new uploads yet. Add channels in the Channels tab.</div>';
+}
+async function markSeen(){await fetch("/api/notifications/seen",{method:"POST"});pollNotifs();}
+async function pollNotifs(){
+  try{const d=await (await fetch("/api/notifications")).json();
+    const b=$("notifBadge");if(d.unseen){b.style.display="flex";b.textContent=d.unseen;}else b.style.display="none";
+  }catch(e){}setTimeout(pollNotifs,30000);
+}
+
+/* ---------- settings ---------- */
+const YCHECKS=[
+ ["best_quality","Best quality","Highest res + best audio, merged"],
+ ["prefer_mp4","Prefer MP4","Remux into .mp4"],
+ ["embed_thumbnail","Embed thumbnail","Thumbnail inside file"],
+ ["embed_metadata","Embed metadata","Title/channel/date tags"],
+ ["write_thumbnail","Save thumbnail file","Separate .jpg"],
+ ["write_info_json","Save info JSON","Full metadata .json"],
+ ["write_subs","Download subtitles","Uploaded subs"],
+ ["auto_subs","Auto captions","YouTube auto subs"],
+ ["audio_only","Audio only (MP3)","Extract audio"],
+ ["restrict_filenames","Safe filenames","ASCII only"],
+ ["subfolder_per_search","Folder per search","Organize by search/channel"],
+ ["skip_downloaded","Skip duplicates","Never download twice"],
+];
+function stab(el){document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+  document.querySelectorAll(".pane").forEach(p=>p.classList.remove("active"));
+  el.classList.add("active");$("p-"+el.dataset.p).classList.add("active");}
+async function openSettings(){
+  cfg=await (await fetch("/api/settings")).json();
+  $("s_engine").value=cfg.search_engine||"ytdlp";
+  $("s_dir").value=cfg.download_dir;$("s_conc").value=cfg.ytdlp.concurrent_downloads;
+  $("s_tmpl").value=cfg.ytdlp.filename_template;$("s_rate").value=cfg.ytdlp.rate_limit_kbps||0;
+  $("s_cookies_browser").value=cfg.ytdlp.cookies_browser||"";$("s_cookie_file").value=cfg.ytdlp.cookie_file||"";
+  $("s_watch").value=cfg.watch_interval_min||30;
+  $("s_autodl").checked=!!cfg.auto_download_new;
+  $("s_autocat").checked=cfg.auto_categorize!==false;
+  $("s_cats").value=(cfg.categories||[]).join("\n");
+  $("ycheck").innerHTML=YCHECKS.map(([k,t,d])=>`<label class="ci"><input type="checkbox" id="yc_${k}" ${cfg.ytdlp[k]?"checked":""}><span>${t}<small>${d}</small></span></label>`).join("");
+  $("keylist").innerHTML="";(cfg.youtube_api_keys.length?cfg.youtube_api_keys:[""]).forEach(addKeyRow);
+  $("s_ai_active").value=cfg.active_ai_provider||"";
+  $("aiproviders").innerHTML=Object.entries(cfg.ai_providers).map(([n,p])=>`
+    <div class="frow" style="border:1px solid var(--border);border-radius:10px;padding:12px">
+      <b style="text-transform:capitalize">${n==="local"?"Local model":n}</b>
+      ${n==="local"?'<div class="note" style="margin:4px 0 8px">No API key needed. Ollama: http://localhost:11434/v1 · LM Studio: http://localhost:1234/v1. Set model to your pulled Qwen (e.g. qwen2.5).</div>':""}
+      ${n==="local"?`<input id="ai_base_${n}" placeholder="base URL" value="${esc(p.base_url||"http://localhost:11434/v1")}" style="width:100%;margin-bottom:8px;font-family:monospace;font-size:12px;background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:8px">`:""}
+      <div style="display:flex;gap:8px">
+        <input id="ai_key_${n}" placeholder="${n==="local"?"(no key needed)":"API key"}" value="${esc(p.api_key)}" style="flex:2;font-family:monospace;font-size:12px;background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:8px">
+        <input id="ai_model_${n}" placeholder="model" value="${esc(p.model)}" style="flex:1;background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:8px"></div></div>`).join("");
+  $("settings").classList.add("show");
+}
+function closeSettings(){$("settings").classList.remove("show");}
+async function resetCats(){const d=await (await fetch("/api/default_categories")).json();$("s_cats").value=d.categories.join("\n");}
+function addKeyRow(v){const d=document.createElement("div");d.className="keyrow";
+  d.innerHTML=`<input value="${esc(v)}" placeholder="AIza…"><button class="btn" onclick="testKey(this)">Test</button><button class="btn" onclick="this.parentNode.remove()">Remove</button>`;
+  $("keylist").appendChild(d);}
+async function testKey(b){const k=b.parentNode.querySelector("input").value.trim();b.textContent="…";
+  const d=await (await fetch("/api/test_key",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:k})})).json();
+  b.textContent=d.ok?"OK":"Failed";if(!d.ok)toast(d.error,5000);setTimeout(()=>b.textContent="Test",2500);}
+async function saveSettings(){
+  const ytdlp={concurrent_downloads:+$("s_conc").value||4,filename_template:$("s_tmpl").value,
+    rate_limit_kbps:+$("s_rate").value||0,cookies_browser:$("s_cookies_browser").value,cookie_file:$("s_cookie_file").value.trim()};
+  YCHECKS.forEach(([k])=>ytdlp[k]=$("yc_"+k).checked);
+  const ai={};Object.keys(cfg.ai_providers).forEach(n=>{ai[n]={api_key:$("ai_key_"+n).value.trim(),model:$("ai_model_"+n).value.trim()};
+    if(n==="local"&&$("ai_base_local"))ai[n].base_url=$("ai_base_local").value.trim();});
+  const res=await (await fetch("/api/settings",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+    search_engine:$("s_engine").value,download_dir:$("s_dir").value.trim(),watch_interval_min:+$("s_watch").value||30,auto_download_new:$("s_autodl").checked,auto_categorize:$("s_autocat").checked,
+    categories:$("s_cats").value.split("\n").map(s=>s.trim()).filter(Boolean),
+    youtube_api_keys:[...$("keylist").querySelectorAll("input")].map(i=>i.value.trim()).filter(Boolean),
+    active_ai_provider:$("s_ai_active").value,ai_providers:ai,ytdlp})})).json();
+  if(res.config)cfg=res.config;
+  toast("Saved");closeSettings();
+}
+$("q").addEventListener("keydown",e=>{if(e.key==="Enter")doSearch();});
+pollJobs();pollNotifs();
+</script>
+</body>
+</html>

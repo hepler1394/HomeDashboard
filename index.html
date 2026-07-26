@@ -1,0 +1,602 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Home Network</title>
+<style>
+/* ============================ THEME TOKENS ============================ */
+:root{
+  --accent:#005FB8; --accent-fg:#fff;
+  --bg:#eaeaea; --win:#f3f3f3; --content:#ffffff; --sidebar:#f7f7f7;
+  --line:#e2e2e2; --line2:#d6d6d6; --text:#1b1b1b; --mut:#5f6368; --dim:#8a8f98;
+  --hover:#f0f0f0; --sel:#e8f1fb; --sel-line:#cfe3f7;
+  --radius:8px; --radius-sm:5px; --font:"Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;
+  --ok:#0f7b34; --bad:#c42b1c; --warn:#9d5d00; --shadow:0 12px 40px rgba(0,0,0,.22);
+  --title-h:40px; --track:rgba(0,0,0,.09); color-scheme:light dark;
+}
+.theme-mac{
+  --accent:#0a84ff; --accent-fg:#fff;
+  --bg:#dfe0e2; --win:#ffffff; --content:#ffffff; --sidebar:rgba(246,246,248,.86);
+  --line:#e6e6e9; --line2:#dcdce0; --text:#1d1d1f; --mut:#6e6e73; --dim:#8e8e93;
+  --hover:rgba(0,0,0,.04); --sel:rgba(10,132,255,.14); --sel-line:transparent;
+  --radius:11px; --radius-sm:7px; --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif;
+  --title-h:44px;
+}
+/* Native dark modes. JS adds .is-dark from the Auto/Light/Dark setting
+   (Auto follows the system, like real Explorer / Finder). */
+.theme-win.is-dark{
+  --accent:#60cdff; --accent-fg:#06121f;
+  --bg:#1b1b1b; --win:#282828; --content:#272727; --sidebar:#2b2b2b;
+  --line:#1e1e1e; --line2:#3d3d3d; --text:#ffffff; --mut:#c7c7c7; --dim:#8f8f8f;
+  --hover:#333333; --sel:#123a54; --sel-line:#2a5a7d; --track:rgba(255,255,255,.13);
+}
+.theme-mac.is-dark{
+  --accent:#0a84ff; --accent-fg:#fff;
+  --bg:#151516; --win:#2a2a2c; --content:#1e1e1e; --sidebar:rgba(40,40,42,.72);
+  --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.15); --text:#f5f5f7; --mut:#98989d; --dim:#8e8e93;
+  --hover:rgba(255,255,255,.06); --sel:rgba(10,132,255,.28); --sel-line:transparent; --track:rgba(255,255,255,.14);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--win);color:var(--text);font-family:var(--font);font-size:14px;overflow:hidden}
+.theme-mac body{font-size:13px}
+a{color:inherit;text-decoration:none}
+
+/* ============================ WINDOW SHELL (fills the whole browser) ============================ */
+.window{width:100vw;height:100vh;background:var(--win);display:flex;flex-direction:column;overflow:hidden}
+.titlebar{height:var(--title-h);flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:0 12px;
+  background:var(--win);border-bottom:1px solid var(--line);position:relative;user-select:none}
+/* windows controls */
+.wintitle{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--text)}
+.wintitle .ico{width:16px;height:16px;color:var(--accent)}
+.wctl{margin-left:auto;display:flex;gap:2px}
+.wctl button{width:44px;height:var(--title-h);border:0;background:transparent;color:var(--mut);cursor:default;display:grid;place-items:center}
+.wctl button:hover{background:var(--hover)} .wctl button.x:hover{background:#c42b1c;color:#fff}
+.wctl svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:1.3}
+/* mac lights */
+.lights{display:none;gap:8px;align-items:center}
+.lights i{width:12px;height:12px;border-radius:50%;display:block}
+.lights .r{background:#ff5f57} .lights .y{background:#febc2e} .lights .g{background:#28c840}
+.mac-title{position:absolute;left:0;right:0;text-align:center;font-size:13px;font-weight:600;color:var(--text);pointer-events:none;display:none}
+.theme-mac .wintitle,.theme-mac .wctl{display:none}
+.theme-mac .lights{display:flex} .theme-mac .mac-title{display:block}
+
+/* ============================ BODY: SIDEBAR + CONTENT ============================ */
+.shell{flex:1;display:flex;min-height:0}
+.sidebar{width:216px;flex:0 0 auto;background:var(--sidebar);border-right:1px solid var(--line);
+  padding:10px 8px;overflow:auto}
+.theme-mac .sidebar{backdrop-filter:blur(24px) saturate(180%);-webkit-backdrop-filter:blur(24px) saturate(180%)}
+.sec-label{font-size:11px;font-weight:600;color:var(--dim);padding:12px 10px 4px;text-transform:none;letter-spacing:.2px}
+.theme-mac .sec-label{font-size:11px;color:var(--dim);font-weight:600}
+.navitem{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:var(--radius-sm);cursor:default;color:var(--text);font-size:13.5px}
+.navitem:hover{background:var(--hover)}
+.navitem.active{background:var(--sel);box-shadow:inset 0 0 0 1px var(--sel-line)}
+.theme-win .navitem.active{position:relative}
+.theme-win .navitem.active::before{content:"";position:absolute;left:2px;top:8px;bottom:8px;width:3px;border-radius:3px;background:var(--accent)}
+.navitem .ni{width:17px;height:17px;flex:0 0 auto;color:var(--accent)}
+.theme-mac .navitem .ni{color:var(--accent)}
+.navitem .dot{width:8px;height:8px;border-radius:50%;margin-left:auto;background:var(--dim)}
+.navitem .dot.on{background:var(--ok)} .navitem .dot.off{background:var(--bad)}
+
+.main{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--content)}
+.toolbar{height:44px;flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:0 14px;border-bottom:1px solid var(--line);background:var(--content)}
+.crumb{font-size:13px;color:var(--mut);display:flex;align-items:center;gap:6px}
+.crumb b{color:var(--text);font-weight:600}
+.tspace{flex:1}
+.tbtn{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 11px;border:1px solid var(--line2);
+  border-radius:var(--radius-sm);background:var(--content);color:var(--text);font-size:12.5px;cursor:default}
+.tbtn:hover{background:var(--hover)} .tbtn .ni{width:15px;height:15px;color:var(--mut)}
+.view{flex:1;overflow:auto;padding:18px 22px}
+
+/* ============================ SECTIONS / TILES ============================ */
+.h2{font-size:13px;font-weight:600;color:var(--mut);margin:6px 2px 12px;display:flex;align-items:center;gap:8px}
+.h2 .ln{flex:1;height:1px;background:var(--line)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-bottom:26px}
+
+/* device row (like a network location) */
+.dev{border:1px solid var(--line);border-radius:var(--radius);padding:13px 14px;background:var(--content);transition:.12s}
+.dev:hover{background:var(--hover)}
+.dev .top{display:flex;align-items:center;gap:11px}
+.dev .pcico{width:34px;height:34px;flex:0 0 auto;color:var(--accent)}
+.dev .nm{font-weight:600;font-size:14px} .theme-mac .dev .nm{font-weight:600}
+.dev .rl{font-size:12px;color:var(--mut)}
+.dev .st{margin-left:auto;font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px}
+.dev .st.on{color:var(--ok);background:rgba(15,123,52,.1)} .dev .st.off{color:var(--bad);background:rgba(196,43,28,.09)}
+.dev .ip{font-family:"Cascadia Code",Consolas,monospace;font-size:12px;color:var(--mut);margin:10px 0 11px}
+.acts{display:flex;flex-wrap:wrap;gap:7px}
+.btn{display:inline-flex;align-items:center;gap:6px;height:29px;padding:0 10px;border:1px solid var(--line2);
+  border-radius:var(--radius-sm);background:var(--content);color:var(--text);font-size:12px;cursor:default;transition:.1s}
+.btn:hover{background:var(--sel);border-color:var(--sel-line)}
+.btn[disabled]{opacity:.4;pointer-events:none}
+.btn .ni{width:14px;height:14px;color:var(--mut)}
+.btn.parsec{border-color:#1e63ff33} .btn.parsec .plogo{width:15px;height:15px}
+.pwrwrap{position:relative;display:inline-block}
+.pwrmenu{position:absolute;top:calc(100% + 4px);right:0;background:var(--content);border:1px solid var(--line2);
+  border-radius:var(--radius-sm);box-shadow:var(--shadow);padding:4px;min-width:140px;display:none;flex-direction:column;z-index:20}
+.pwrmenu.open{display:flex}
+.pwrmenu button{border:0;background:transparent;text-align:left;padding:8px 10px;border-radius:5px;font:inherit;font-size:12.5px;color:var(--text);cursor:default}
+.pwrmenu button:hover{background:var(--hover)} .pwrmenu button.danger{color:var(--bad)}
+
+/* drive tile — native OS look (Windows 11 File Explorer / macOS Finder) */
+.drive{display:flex;align-items:center;gap:13px;border:1px solid var(--line);border-radius:6px;padding:11px 13px;background:var(--content);cursor:default;transition:background .1s,border-color .1s}
+.drive:hover{background:var(--hover)}
+.di{width:42px;height:42px;flex:0 0 auto}
+.di-mac{display:none}
+.theme-mac .di-win{display:none} .theme-mac .di-mac{display:block}
+.dinfo{flex:1;min-width:0}
+.dname{font-weight:600;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dsub{font-size:11px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;font-family:Consolas,monospace}
+.track{height:5px;border-radius:6px;background:var(--track);overflow:hidden;margin:8px 0 6px}
+.fill{height:100%;border-radius:6px;background:var(--accent)}
+.fill.hot{background:#e11d1d}
+.dfree{font-size:12px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.theme-mac .drive{border-radius:12px;padding:12px 14px}
+.theme-mac .track{height:7px;border-radius:10px}
+
+/* ============================ FIND ============================ */
+.searchbar{display:flex;align-items:center;gap:9px;border:1px solid var(--line2);border-radius:var(--radius-sm);
+  padding:8px 12px;background:var(--content);max-width:640px}
+.searchbar svg{width:16px;height:16px;color:var(--mut)}
+.searchbar input{border:0;outline:0;background:transparent;font:inherit;font-size:13.5px;color:var(--text);width:100%}
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:var(--radius-sm);overflow:hidden;margin-left:8px}
+.seg button{border:0;background:var(--content);color:var(--mut);font:inherit;font-size:12px;padding:7px 13px;cursor:default}
+.seg button.on{background:var(--accent);color:var(--accent-fg)}
+.results{margin-top:14px;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.rrow{display:flex;align-items:center;gap:12px;padding:9px 14px;border-bottom:1px solid var(--line);cursor:default}
+.rrow:last-child{border-bottom:none} .rrow:hover{background:var(--sel)}
+.rrow .fi{width:17px;height:17px;color:var(--accent);flex:0 0 auto}
+.rrow .rn{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:34%}
+.rrow .rd{font-size:12px;color:var(--mut);font-family:Consolas,monospace;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.empty{padding:34px;text-align:center;color:var(--dim);font-size:13px}
+.airow{padding:11px 14px;border-bottom:1px solid var(--line);font-size:12.5px;color:var(--text);background:var(--sel)}
+.airow b{color:var(--accent)}
+
+/* ============================ SETTINGS ============================ */
+.card{border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;margin-bottom:16px;background:var(--content);max-width:720px}
+.card h3{margin:0 0 4px;font-size:14px} .card p{margin:0 0 14px;color:var(--mut);font-size:12.5px}
+.themepick{display:flex;gap:12px}
+.tpick{flex:1;border:2px solid var(--line2);border-radius:var(--radius);padding:12px;cursor:default;text-align:center;font-size:12.5px}
+.tpick.sel{border-color:var(--accent)} .tpick .prev{height:56px;border-radius:6px;margin-bottom:8px;border:1px solid var(--line)}
+.prev.win{background:linear-gradient(#f3f3f3 34%,#fff 34%)} .prev.mac{background:linear-gradient(#ececf0 30%,#fff 30%)}
+.krow{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.krow:last-child{border-bottom:none}
+.kname{width:96px;font-weight:600;font-size:13px;text-transform:capitalize}
+.kstate{font-size:11.5px;color:var(--mut);font-family:Consolas,monospace;min-width:78px}
+.kstate.set{color:var(--ok)}
+.kin{flex:1;min-width:120px;border:1px solid var(--line2);border-radius:var(--radius-sm);padding:7px 10px;font:inherit;font-size:12.5px;background:var(--content);color:var(--text)}
+.ksave{height:31px;padding:0 13px;border:1px solid var(--accent);background:var(--accent);color:var(--accent-fg);border-radius:var(--radius-sm);font:inherit;font-size:12px;cursor:default}
+.ksave:hover{opacity:.9} .kdef{font-size:11.5px;color:var(--mut);display:flex;align-items:center;gap:4px}
+.badge{font-size:10px;font-weight:700;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:1px 5px;margin-left:6px}
+
+/* ============================ STATUS BAR + TOASTS ============================ */
+.statusbar{height:26px;flex:0 0 auto;display:flex;align-items:center;gap:14px;padding:0 14px;border-top:1px solid var(--line);
+  background:var(--sidebar);font-size:11.5px;color:var(--mut)}
+.statusbar .live{display:flex;align-items:center;gap:6px}
+.statusbar .live i{width:7px;height:7px;border-radius:50%;background:var(--ok)}
+#toasts{position:fixed;right:20px;bottom:20px;display:flex;flex-direction:column;gap:8px;z-index:80}
+.toast{background:var(--content);border:1px solid var(--line2);border-left:3px solid var(--accent);border-radius:8px;
+  padding:11px 15px;font-size:12.5px;box-shadow:var(--shadow);min-width:220px;color:var(--text)}
+.hidden{display:none!important}
+
+/* ============================ FILE BROWSER + CONTEXT MENU ============================ */
+.fbnav{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.fbup{width:32px;height:32px;border:1px solid var(--line2);border-radius:var(--radius-sm);background:var(--content);display:grid;place-items:center;cursor:default;flex:0 0 auto}
+.fbup:hover{background:var(--hover)} .fbup svg{width:16px;height:16px;stroke:var(--mut);fill:none;stroke-width:2}
+.fbpath{flex:1;min-width:0;border:1px solid var(--line2);border-radius:var(--radius-sm);padding:8px 12px;background:var(--content);
+  font-size:12.5px;display:flex;flex-wrap:wrap;gap:3px;align-items:center;overflow:hidden}
+.fbpath .cseg{color:var(--accent);cursor:default;white-space:nowrap} .fbpath .cseg:hover{text-decoration:underline}
+.fbpath .csep{color:var(--dim)}
+.fblist{border:1px solid var(--line);border-radius:var(--radius);max-height:calc(100vh - 210px);overflow:auto}
+.fbrow{display:flex;align-items:center;gap:11px;padding:8px 14px;border-bottom:1px solid var(--line);cursor:default;user-select:none}
+.fbrow:last-child{border-bottom:none} .fbrow:hover{background:var(--sel)}
+.fbrow .fi{width:19px;height:19px;flex:0 0 auto}
+.fbrow .fi.folder{color:#e9b44c}
+.fbrow .fi.file{color:var(--accent)}
+.fbrow .fn{flex:1;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fbrow .fsz{font-size:11.5px;color:var(--mut);font-variant-numeric:tabular-nums;white-space:nowrap}
+.ctxmenu{position:fixed;z-index:120;min-width:184px;background:var(--content);border:1px solid var(--line2);
+  border-radius:var(--radius-sm);box-shadow:var(--shadow);padding:5px;display:none}
+.ctxmenu.open{display:block}
+.ctxmenu button{display:flex;align-items:center;gap:10px;width:100%;border:0;background:transparent;text-align:left;
+  padding:8px 11px;border-radius:5px;font:inherit;font-size:12.5px;color:var(--text);cursor:default}
+.ctxmenu button:hover{background:var(--sel)} .ctxmenu button svg{width:15px;height:15px;stroke:var(--mut);fill:none;stroke-width:1.8}
+.ctxmenu .sep{height:1px;background:var(--line);margin:4px 3px}
+.navitem.pcsel{background:var(--sel);box-shadow:inset 0 0 0 1px var(--sel-line)}
+
+/* ============================ PREMIUM: KPI header, alerts, depth ============================ */
+.alerts{display:flex;flex-direction:column;gap:8px;margin:0 2px 16px}
+.alerts:empty{display:none}
+.alert{display:flex;align-items:center;gap:9px;padding:10px 13px;border-radius:var(--radius);font-size:12.5px;font-weight:500}
+.alert svg{width:17px;height:17px;flex:0 0 auto}
+.alert.warn{background:rgba(233,79,69,.10);border:1px solid rgba(233,79,69,.30);color:#e0483d}
+.alert.off{background:rgba(224,164,35,.12);border:1px solid rgba(224,164,35,.34);color:#b9821a}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:2px 2px 24px}
+.ktile{display:flex;align-items:center;gap:14px;padding:14px 16px;border:1px solid var(--line);border-radius:var(--radius);
+  background:var(--content);box-shadow:0 1px 2px rgba(0,0,0,.05),0 10px 26px rgba(0,0,0,.05);min-width:0}
+.kring{position:relative;width:58px;height:58px;flex:0 0 auto}
+.kring svg{width:58px;height:58px;transform:rotate(-90deg)}
+.krbg{fill:none;stroke:var(--track);stroke-width:6.5}
+.krfg{fill:none;stroke:var(--accent);stroke-width:6.5;stroke-linecap:round;stroke-dasharray:188.5;stroke-dashoffset:188.5;
+  transition:stroke-dashoffset 1.05s cubic-bezier(.2,.7,.2,1),stroke .4s}
+.kpct{position:absolute;inset:0;display:grid;place-items:center;font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--text)}
+.klab{min-width:0}
+.kt{font-size:12px;color:var(--mut);font-weight:600;white-space:nowrap}
+.kd{font-size:13px;color:var(--text);font-weight:600;margin-top:3px;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kbig{font-size:18px;font-weight:700;letter-spacing:-.4px;margin-top:2px}
+.livedot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--ok);margin-right:5px;vertical-align:middle}
+.dev{box-shadow:0 1px 2px rgba(0,0,0,.04);transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease,background .12s ease}
+.dev:hover{transform:translateY(-2px);box-shadow:0 10px 22px rgba(0,0,0,.12)}
+.upct{float:right;font-weight:700;font-variant-numeric:tabular-nums}
+.upct.warn{color:#b9821a} .upct.hot{color:#e0483d}
+.statusbar .live i{animation:hbeat 1.9s ease-out infinite}
+@keyframes hbeat{0%{box-shadow:0 0 0 0 rgba(15,123,52,.5)}70%{box-shadow:0 0 0 6px rgba(15,123,52,0)}100%{box-shadow:0 0 0 0 rgba(15,123,52,0)}}
+.dspark{height:22px;margin:9px 0 0}
+.dspark svg{width:100%;height:22px;display:block;overflow:visible}
+.dfore{font-size:11px;font-weight:600;color:#b9821a;margin-top:7px;display:flex;align-items:center;gap:6px}
+.dfore::before{content:"";width:5px;height:5px;border-radius:50%;background:currentColor}
+.ktile{position:relative;overflow:hidden}
+.kspark{position:absolute;left:0;right:0;bottom:0;height:16px;opacity:.7;pointer-events:none}
+.kspark svg{width:100%;height:16px;display:block}
+.fbrow.drop{background:var(--sel);outline:2px solid var(--accent);outline-offset:-2px}
+.pickov{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;z-index:200;align-items:center;justify-content:center}
+.pickov.open{display:flex}
+.pickbox{width:440px;max-width:92vw;max-height:78vh;background:var(--content);border:1px solid var(--line2);border-radius:12px;box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden}
+.pickhd{padding:14px 16px 6px;font-size:14px;font-weight:600}
+.pickcrumb{padding:0 16px 10px;font-size:12px;color:var(--mut);font-family:Consolas,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.picklist{flex:1;overflow:auto;border-top:1px solid var(--line);min-height:130px}
+.pkrow{display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:default;font-size:13px;border-bottom:1px solid var(--line)}
+.pkrow:last-child{border-bottom:none} .pkrow:hover{background:var(--sel)}
+.pkrow svg{width:18px;height:18px;flex:0 0 auto;color:#e9b44c} .pkrow.up svg{color:var(--mut);fill:none;stroke:currentColor}
+.pickft{display:flex;justify-content:flex-end;gap:8px;padding:12px 16px;border-top:1px solid var(--line)}
+.pkbtn{height:32px;padding:0 14px;border:1px solid var(--line2);border-radius:6px;background:var(--content);color:var(--text);font:inherit;font-size:12.5px;cursor:default}
+.pkbtn:hover{background:var(--hover)} .pkbtn.pkgo{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)} .pkbtn.pkgo:hover{opacity:.92}
+</style></head>
+<body class="theme-win">
+<div class="window">
+
+  <!-- fake OS titlebar (mac lights + Windows min/max/close) removed -->
+
+
+  <div class="shell">
+    <nav class="sidebar">
+      <div class="sec-label">Home Network</div>
+      <div class="navitem active" data-view="home"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 10.5V20a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-9.5M2.5 11 12 3l9.5 8"/></svg><span>This PC</span></div>
+      <div class="navitem" data-view="find"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><span>Find files</span></div>
+      <div class="navitem" data-view="settings"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 8 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 3.6 15a1.65 1.65 0 0 0-1.51-1H2a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 3.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 8 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.14.63.66 1.12 1.31 1.28"/></svg><span>Settings</span></div>
+      <div class="sec-label">Computers</div>
+      <div id="navdevs"></div>
+    </nav>
+
+    <div class="main">
+      <div class="toolbar">
+        <div class="crumb"><span>Home Network</span><span id="crumb2"></span></div>
+        <div class="tspace"></div>
+        <div class="tbtn" id="autoBtn"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.5 9a9 9 0 0 1 14.9-3.4L23 10M1 14l4.6 4.4A9 9 0 0 0 20.5 15"/></svg><span>Refresh</span></div>
+      </div>
+
+      <!-- HOME (This PC) -->
+      <div class="view" id="v-home">
+        <div id="pcview">
+          <div class="alerts" id="alerts"></div>
+          <div class="kpis" id="kpis">
+            <div class="ktile"><div class="kring"><svg viewBox="0 0 72 72"><circle class="krbg" cx="36" cy="36" r="30"/><circle class="krfg" id="kr-store" cx="36" cy="36" r="30"/></svg><div class="kpct" id="kv-store">0%</div></div><div class="klab"><div class="kt">Storage used</div><div class="kd" id="kd-store">&mdash;</div></div></div>
+            <div class="ktile"><div class="kring"><svg viewBox="0 0 72 72"><circle class="krbg" cx="36" cy="36" r="30"/><circle class="krfg" id="kr-cpu" cx="36" cy="36" r="30"/></svg><div class="kpct" id="kv-cpu">0%</div></div><div class="klab"><div class="kt">CPU</div><div class="kd" id="kd-cpu">&mdash;</div></div><div class="kspark" id="ks-cpu"></div></div>
+            <div class="ktile"><div class="kring"><svg viewBox="0 0 72 72"><circle class="krbg" cx="36" cy="36" r="30"/><circle class="krfg" id="kr-mem" cx="36" cy="36" r="30"/></svg><div class="kpct" id="kv-mem">0%</div></div><div class="klab"><div class="kt">Memory</div><div class="kd" id="kd-mem">&mdash;</div></div><div class="kspark" id="ks-mem"></div></div>
+            <div class="ktile"><div class="klab"><div class="kt">Uptime</div><div class="kbig" id="kv-up">&mdash;</div><div class="kd" style="margin-top:3px;color:var(--mut)"><span class="livedot"></span>Live now</div></div></div>
+          </div>
+          <div class="h2"><span>Computers</span><span class="ln"></span></div>
+          <div class="grid" id="devs"><div class="empty">Scanning network...</div></div>
+          <div class="h2"><span id="drivesLabel">Drives and storage</span><span class="ln"></span></div>
+          <div class="grid" id="drives"><div class="empty">Reading drives...</div></div>
+        </div>
+        <div id="fileview" class="hidden">
+          <div class="fbnav">
+            <div class="fbup" onclick="upDir()" title="Up one level"><svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg></div>
+            <div class="fbpath" id="fbpath"></div>
+          </div>
+          <div class="fblist" id="fblist"></div>
+        </div>
+      </div>
+
+      <!-- FIND -->
+      <div class="view hidden" id="v-find">
+        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:4px">
+          <div class="searchbar" style="flex:1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+            <input id="fq" placeholder="Search files on any drive by name..." autocomplete="off"></div>
+          <div class="seg" id="aiseg"><button class="on" data-m="instant">Instant</button><button data-m="ai">Ask AI</button></div>
+          <div class="tbtn" onclick="reindex()" style="margin-left:6px"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M3.5 9a9 9 0 0 1 14.9-3.4L23 10"/></svg><span id="idxstat">index</span></div>
+        </div>
+        <div class="results" id="results"><div class="empty">Type at least 2 letters to search across every drive.</div></div>
+      </div>
+
+      <!-- SETTINGS -->
+      <div class="view hidden" id="v-settings">
+        <div class="card">
+          <h3>Appearance</h3><p>Choose how the dashboard looks.</p>
+          <div class="themepick">
+            <div class="tpick sel" data-theme="win"><div class="prev win"></div>Windows Explorer</div>
+            <div class="tpick" data-theme="mac"><div class="prev mac"></div>macOS Finder</div>
+          </div>
+          <div style="margin-top:15px;display:flex;align-items:center;gap:12px">
+            <span style="font-size:13px;color:var(--mut)">Light / Dark</span>
+            <div class="seg" id="modeseg"><button class="on" data-mode="auto">Auto</button><button data-mode="light">Light</button><button data-mode="dark">Dark</button></div>
+            <span style="font-size:11.5px;color:var(--dim)">Auto follows your system</span>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Remote access (Parsec)</h3><p>Enter each PC's Parsec peer ID (from Parsec &rsaquo; Computers) so the Parsec button connects straight into it. Leave blank to just open the Parsec app.</p>
+          <div id="peers"><div class="empty">Loading...</div></div>
+        </div>
+        <div class="card">
+          <h3>AI search keys</h3><p>Paste an API key to power the "Ask AI" search. Stored locally on this server only. The default provider is tried first, then the others as fallback.</p>
+          <div id="keys"><div class="empty">Loading...</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="statusbar">
+    <span id="sb-items">-</span>
+    <span class="live"><i></i><span>Live</span></span>
+    <span class="tspace" style="flex:1"></span>
+    <span id="sb-host"></span>
+  </div>
+</div>
+<div id="toasts"></div>
+<div class="ctxmenu" id="ctx"></div>
+<div class="pickov" id="pickov"><div class="pickbox">
+  <div class="pickhd" id="picktitle">Copy to&hellip;</div>
+  <div class="pickcrumb" id="pickcrumb">This PC</div>
+  <div class="picklist" id="picklist"></div>
+  <div class="pickft"><button class="pkbtn" onclick="pickClose()">Cancel</button><button class="pkbtn pkgo" id="pickhere" onclick="pickDo()">Copy here</button></div>
+</div></div>
+
+<script>
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+let DATA=null, AUTO=true, view='home', aiMode=false, fqTimer=null;
+const PLOGO='<svg class="plogo" viewBox="0 0 24 24" fill="none" stroke="#1e63ff" stroke-width="2"><path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="m10 9 5 3-5 3z" fill="#1e63ff"/></svg>';
+const DI_LOCAL='<svg class="di di-win" viewBox="0 0 48 48" fill="none"><rect x="7" y="17" width="34" height="16" rx="2.5" fill="#cbced3"/><rect x="7" y="27" width="34" height="6" fill="#b5b9bf"/><circle cx="35" cy="30" r="1.6" fill="#2f7de0"/></svg><svg class="di di-mac" viewBox="0 0 48 48" fill="none"><rect x="8" y="18" width="32" height="14" rx="4" fill="#d3d6da" stroke="#bcbfc5"/><circle cx="24" cy="25" r="4.6" fill="#eceef0" stroke="#bcbfc5"/><circle cx="24" cy="25" r="1.4" fill="#9aa0a8"/></svg>';
+const DI_NET='<svg class="di di-win" viewBox="0 0 48 48" fill="none"><rect x="8" y="11" width="32" height="14" rx="2.5" fill="#cbced3"/><circle cx="34" cy="18" r="1.5" fill="#2f7de0"/><path d="M24 25v6M15 37h18M18 37v-2M24 37v-2M30 37v-2" stroke="#9aa0a8" stroke-width="1.6"/></svg><svg class="di di-mac" viewBox="0 0 48 48" fill="none" stroke="#8e9096" stroke-width="1.5"><circle cx="24" cy="24" r="11"/><path d="M13 24h22M24 13v22M15 17c5 3 13 3 18 0M15 31c5-3 13-3 18 0"/></svg>';
+const IC={
+  remote:'<svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8"/></svg>',
+  files:'<svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h6l2 2h10v9a2 2 0 0 1-2 2H3z"/></svg>',
+  wake:'<svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v9"/><path d="M6.6 6.6a8 8 0 1 0 10.8 0"/></svg>',
+  plex:'<svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 3 12 9-12 9z"/></svg>',
+  pwr:'<svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v9"/><path d="M6.6 6.6a8 8 0 1 0 10.8 0"/></svg>'
+};
+function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;$('#toasts').appendChild(t);setTimeout(()=>{t.style.opacity=0;setTimeout(()=>t.remove(),300)},3000);}
+function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+async function act(params,label){try{const r=await fetch('/api/action?'+params);const j=await r.json();toast(j.msg||label);}catch(e){toast('Action failed');}}
+function copyIp(ip){navigator.clipboard&&navigator.clipboard.writeText(ip);toast('Copied '+ip);}
+function tb(gb){return gb>=1024?(gb/1024).toFixed(gb>=10240?0:1)+' TB':gb+' GB';}
+function barcls(p){return p>=90?'hot':p>=75?'warn':'';}
+function ringColor(p){return p>=85?'#e94f45':p>=65?'#e0a423':'#2fbf71';}
+function animCount(el,target){if(!el)return;const cur=parseInt(el.dataset.v||'0',10);el.dataset.v=target;if(cur===target){el.textContent=target+'%';return;}clearInterval(el._iv);const steps=16;let i=0;el._iv=setInterval(()=>{i++;el.textContent=(i>=steps?target:Math.round(cur+(target-cur)*i/steps))+'%';if(i>=steps)clearInterval(el._iv);},26);}
+function ringSet(rid,vid,p,color){p=Math.max(0,Math.min(100,Math.round(p||0)));const r=document.getElementById(rid);if(r){r.style.strokeDashoffset=(188.5*(1-p/100)).toFixed(1);r.style.stroke=color;}animCount(document.getElementById(vid),p);}
+function renderKpis(d){const tot=d.drives.reduce((a,x)=>a+(x.totalGB||0),0),free=d.drives.reduce((a,x)=>a+(x.freeGB||0),0);const up=tot?Math.round((tot-free)/tot*100):0;
+  ringSet('kr-store','kv-store',up,ringColor(up));const kds=$('#kd-store');if(kds)kds.textContent=tb(free)+' free';
+  ringSet('kr-cpu','kv-cpu',d.cpu||0,ringColor(d.cpu||0));const kdc=$('#kd-cpu');if(kdc)kdc.textContent='processor load';
+  ringSet('kr-mem','kv-mem',d.memPct||0,ringColor(d.memPct||0));const kdm=$('#kd-mem');if(kdm)kdm.textContent=(d.memUsedGB||0)+' / '+(d.memTotalGB||0)+' GB';
+  const ku=$('#kv-up');if(ku)ku.textContent=d.uptime||'—';
+  const ksc=document.getElementById('ks-cpu');if(ksc)ksc.innerHTML=sparkSvg(cpuSeries(),160,16,'#e0a423');
+  const ksm=document.getElementById('ks-mem');if(ksm)ksm.innerHTML=sparkSvg(memSeries(),160,16,'#2fbf71');}
+function renderAlerts(d){const A=[],WT='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>';
+  d.drives.forEach(x=>{if(x.usedPct>=90)A.push('<div class="alert warn">'+WT+'<span><b>'+x.letter+':</b> '+x.usedPct+'% full — only '+tb(x.freeGB)+' left</span></div>');});
+  d.devices.forEach(v=>{if(!v.up&&!v.isLocal)A.push('<div class="alert off">'+WT+'<span><b>'+esc(v.name)+'</b> is offline</span></div>');});
+  const el=$('#alerts');if(el)el.innerHTML=A.join('');}
+let HIST=[];
+async function loadHist(){try{const r=await fetch('/api/history');const j=await r.json();HIST=(j.samples||[]);if(DATA&&view==='home')render(DATA);}catch(e){}}
+function sparkPts(vals,w,h){if(!vals||vals.length<2)return null;const mn=Math.min(...vals),mx=Math.max(...vals),flat=mx===mn,sp=(mx-mn)||1;return vals.map((v,i)=>((i/(vals.length-1))*w).toFixed(1)+','+(flat?(h/2):(h-2-((v-mn)/sp)*(h-4))).toFixed(1)).join(' ');}
+function sparkSvg(vals,w,h,color){const p=sparkPts(vals,w,h);if(!p)return '';const lp=p.split(' ').pop().split(',');return '<svg viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none"><polyline points="'+p+'" fill="none" stroke="'+color+'" stroke-width="1.6" vector-effect="non-scaling-stroke"/><circle cx="'+lp[0]+'" cy="'+lp[1]+'" r="1.9" fill="'+color+'"/></svg>';}
+function driveUsedSeries(l){return HIST.map(s=>s.drives&&s.drives[l]?s.drives[l].u:null).filter(v=>v!=null);}
+function driveSpark(l,p){const s=driveUsedSeries(l);if(s.length<2)return '';return '<div class="dspark">'+sparkSvg(s,120,22,p>=90?'#e94f45':p>=75?'#e0a423':'#4a86ff')+'</div>';}
+function driveForecast(l){const a=[];HIST.forEach(s=>{if(s.drives&&s.drives[l])a.push({t:s.t,f:s.drives[l].f});});if(a.length<5)return '';const f=a[0],b=a[a.length-1];const days=(b.t-f.t)/86400;if(days<0.03)return '';const drop=f.f-b.f;if(drop<2)return '';const perDay=drop/days;const left=b.f/perDay;if(left<=0||left>3650)return '';return left<1?'On track to fill within a day':('At this rate, full in ~'+Math.round(left)+' days');}
+function cpuSeries(){return HIST.map(s=>s.cpu).filter(v=>v!=null);}
+function memSeries(){return HIST.map(s=>s.mem).filter(v=>v!=null);}
+
+/* ---- file browser + per-computer filter ---- */
+let curPath=null, filterDev=null, fbItems=[], ctxItem=null;
+const CH=String.fromCharCode(8250);
+const FOLDER_SVG='<svg class="fi folder" viewBox="0 0 24 24" fill="currentColor"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4L11 7h8.5A1.5 1.5 0 0 1 21 8.5v9A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5z"/></svg>';
+const FILE_SVG='<svg class="fi file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M13 2v7h7"/></svg>';
+const CP_SVG='<svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
+const OP_SVG='<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
+const FL_SVG='<svg viewBox="0 0 24 24"><path d="M3 7h6l2 2h10v9a2 2 0 0 1-2 2H3z"/></svg>';
+function driveMatch(x){ if(!filterDev||!DATA)return true; const dev=DATA.devices.find(d=>d.ip===filterDev); if(!dev)return true;
+  const o=(x.owner||'').toUpperCase();
+  if(dev.isLocal)return o===(DATA.host||'').toUpperCase();
+  return o===dev.ip || (dev.host&&o===dev.host.toUpperCase()); }
+function pickDev(ip){ filterDev=(filterDev===ip?null:ip); curPath=null;
+  $$('.navitem[data-view]').forEach(n=>n.classList.toggle('active',n.dataset.view==='home'));
+  $$('.view').forEach(x=>x.classList.add('hidden'));$('#v-home').classList.remove('hidden');
+  $('#pcview').classList.remove('hidden');$('#fileview').classList.add('hidden'); if(DATA)render(DATA); }
+function openDrive(l){ openPath(l+':\\'); }
+function fsize(b){ if(b<1024)return b+' B'; if(b<1048576)return (b/1024).toFixed(0)+' KB'; if(b<1073741824)return (b/1048576).toFixed(1)+' MB'; return (b/1073741824).toFixed(2)+' GB'; }
+function crumbHtml(p){ let html='<span class="cseg" data-home>This PC</span>'; let acc,prefix,rest;
+  if(p.startsWith('\\\\')){ const seg=p.replace(/\\+$/,'').slice(2).split('\\'); prefix='\\\\'+seg[0]+(seg[1]?'\\'+seg[1]:''); rest=seg.slice(2); acc=prefix; }
+  else { const seg=p.replace(/\\+$/,'').split('\\'); prefix=seg[0]; rest=seg.slice(1); acc=seg[0]+'\\'; }
+  html+='<span class="csep">'+CH+'</span><span class="cseg" data-p="'+esc(acc)+'">'+esc(prefix)+'</span>';
+  rest.forEach(s=>{ acc=acc.replace(/\\+$/,'')+'\\'+s; html+='<span class="csep">'+CH+'</span><span class="cseg" data-p="'+esc(acc)+'">'+esc(s)+'</span>'; });
+  return html; }
+async function openPath(p){ curPath=p; view='home';
+  $$('.navitem[data-view]').forEach(n=>n.classList.toggle('active',n.dataset.view==='home'));
+  $$('.view').forEach(x=>x.classList.add('hidden'));$('#v-home').classList.remove('hidden');
+  $('#pcview').classList.add('hidden');$('#fileview').classList.remove('hidden');
+  $('#fbpath').innerHTML=crumbHtml(p); $('#crumb2').innerHTML=' '+CH+' <b>'+esc(p)+'</b>';
+  $('#fblist').innerHTML='<div class="empty">Opening...</div>';
+  try{ const r=await fetch('/api/ls?path='+encodeURIComponent(p)); const j=await r.json();
+    if(j.err){$('#fblist').innerHTML='<div class="empty">'+esc(j.err)+'</div>';return;}
+    fbItems=j.items;
+    $('#fblist').innerHTML=j.items.length?j.items.map((it,i)=>`<div class="fbrow" data-i="${i}" draggable="true">${it.dir?FOLDER_SVG:FILE_SVG}<span class="fn">${esc(it.name)}</span><span class="fsz">${it.dir?'':fsize(it.size)}</span></div>`).join(''):'<div class="empty">This folder is empty.</div>';
+  }catch(e){$('#fblist').innerHTML='<div class="empty">Could not open this folder.</div>';} }
+function upDir(){ if(!curPath)return; if(/^[A-Za-z]:\\?$/.test(curPath)){goHome();return;}
+  let p=curPath.replace(/\\+$/,'');
+  if(p.startsWith('\\\\')){ const seg=p.slice(2).split('\\'); if(seg.length<=2){goHome();return;} seg.pop(); openPath('\\\\'+seg.join('\\')); return; }
+  const i=p.lastIndexOf('\\'); if(i<=1){goHome();return;} let np=p.slice(0,i); if(/^[A-Za-z]:$/.test(np))np+='\\'; openPath(np); }
+function goHome(){ curPath=null; view='home';
+  $$('.navitem[data-view]').forEach(n=>n.classList.toggle('active',n.dataset.view==='home'));
+  $('#pcview').classList.remove('hidden');$('#fileview').classList.add('hidden');$('#crumb2').innerHTML=''; if(DATA)render(DATA); }
+function showCtx(e,it){ e.preventDefault(); ctxItem=it;
+  $('#ctx').innerHTML=`<button onclick="pickTo('copy')">${CP_SVG} Copy to&hellip;</button><button onclick="pickTo('move')"><svg viewBox="0 0 24 24"><path d="M13 6l6 6-6 6M19 12H5"/></svg> Move to&hellip;</button><div class="sep"></div><button onclick="ctxCopy('path')">${CP_SVG} Copy path</button><button onclick="ctxCopy('name')">${CP_SVG} Copy name</button><div class="sep"></div><button onclick="ctxOpen()">${OP_SVG} Open</button><button onclick="act('do=reveal&path='+encodeURIComponent(ctxItem.full),'Opening folder');hideCtx()">${FL_SVG} Show in Explorer</button>`;
+  const m=$('#ctx'); m.style.left=Math.min(e.clientX,innerWidth-200)+'px'; m.style.top=Math.min(e.clientY,innerHeight-170)+'px'; m.classList.add('open'); }
+function hideCtx(){ $('#ctx').classList.remove('open'); }
+let pickSrc=null,pickMode='copy',pickPath=null;
+function pickName(){ return (pickSrc||'').replace(/\\+$/,'').split('\\').pop(); }
+function pickTo(mode){ if(!ctxItem)return; pickMode=mode; pickSrc=ctxItem.full; hideCtx(); $('#pickov').classList.add('open'); pickNav(null); }
+function pickClose(){ $('#pickov').classList.remove('open'); }
+async function pickNav(p){ pickPath=p;
+  $('#picktitle').textContent=(pickMode==='copy'?'Copy':'Move')+' "'+pickName()+'" to…';
+  $('#pickcrumb').textContent=p||'This PC';
+  const here=$('#pickhere'); here.textContent=(pickMode==='copy'?'Copy':'Move')+' here'; here.style.visibility=p?'visible':'hidden';
+  const list=$('#picklist');
+  if(!p){ list.innerHTML=(DATA?DATA.drives:[]).map(d=>`<div class="pkrow" onclick="pickNav('${d.letter}:\\\\')">${FOLDER_SVG}<span>${d.network?'Network Drive':'Local Disk'} (${d.letter}:)</span></div>`).join('')||'<div class="empty">No drives</div>'; return; }
+  list.innerHTML='<div class="empty">Loading…</div>';
+  try{ const r=await fetch('/api/ls?path='+encodeURIComponent(p)); const j=await r.json();
+    const dirs=(j.items||[]).filter(it=>it.dir);
+    let h='<div class="pkrow up" onclick="pickUp()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg><span>Up one level</span></div>';
+    h+=dirs.map(it=>`<div class="pkrow" onclick="pickNav('${it.full.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')">${FOLDER_SVG}<span>${esc(it.name)}</span></div>`).join('');
+    list.innerHTML=h;
+  }catch(e){ list.innerHTML='<div class="empty">Could not open this folder.</div>'; } }
+function pickUp(){ if(!pickPath)return; let p=pickPath.replace(/\\+$/,''); if(/^[A-Za-z]:$/.test(p)){pickNav(null);return;}
+  if(p.startsWith('\\\\')){ const seg=p.slice(2).split('\\'); if(seg.length<=2){pickNav(null);return;} seg.pop(); pickNav('\\\\'+seg.join('\\')); return; }
+  const i=p.lastIndexOf('\\'); if(i<=1){pickNav(null);return;} let np=p.slice(0,i); if(/^[A-Za-z]:$/.test(np))np+='\\'; pickNav(np); }
+function pickDo(){ if(!pickPath||!pickSrc)return; act('do='+pickMode+'&src='+encodeURIComponent(pickSrc)+'&dst='+encodeURIComponent(pickPath),(pickMode==='copy'?'Copying…':'Moving…')); pickClose(); const cp=curPath; setTimeout(()=>{ if(cp)openPath(cp); },900); }
+function ctxCopy(w){ const v=w==='path'?ctxItem.full:ctxItem.name; if(navigator.clipboard)navigator.clipboard.writeText(v); toast('Copied '+w); hideCtx(); }
+function ctxOpen(){ if(ctxItem.dir)openPath(ctxItem.full); else act('do=openfile&path='+encodeURIComponent(ctxItem.full),'Opening '+ctxItem.name); hideCtx(); }
+
+/* ---- theme + light/dark ---- */
+function applyLook(){
+  const t=localStorage.getItem('hnd-theme')||'win';
+  const m=localStorage.getItem('hnd-mode')||'auto';
+  const dark = m==='dark' || (m==='auto' && matchMedia('(prefers-color-scheme:dark)').matches);
+  document.body.className='theme-'+t+(dark?' is-dark':'');
+  document.documentElement.style.colorScheme = dark?'dark':'light';
+  $$('.tpick').forEach(c=>c.classList.toggle('sel',c.dataset.theme===t));
+  $$('#modeseg button').forEach(b=>b.classList.toggle('on',b.dataset.mode===m));
+}
+function setTheme(t){localStorage.setItem('hnd-theme',t);applyLook();}
+function setMode(m){localStorage.setItem('hnd-mode',m);applyLook();}
+matchMedia('(prefers-color-scheme:dark)').addEventListener('change',()=>{ if((localStorage.getItem('hnd-mode')||'auto')==='auto')applyLook(); });
+applyLook();
+
+/* ---- nav ---- */
+function go(v){view=v;curPath=null;if(v==='home')filterDev=null;
+  $$('.navitem[data-view]').forEach(n=>n.classList.toggle('active',n.dataset.view===v));
+  $$('.view').forEach(x=>x.classList.add('hidden'));$('#v-'+v).classList.remove('hidden');
+  if(v==='home'){$('#pcview').classList.remove('hidden');$('#fileview').classList.add('hidden');}
+  $('#crumb2').innerHTML=v==='home'?'':(' &rsaquo; <b>'+(v==='find'?'Find files':'Settings')+'</b>');
+  if(v==='settings'){loadKeys();loadPeers();} if(v==='find')setTimeout(()=>$('#fq').focus(),50);
+  if(v==='home'&&DATA)render(DATA);}
+$$('.navitem[data-view]').forEach(n=>n.addEventListener('click',()=>go(n.dataset.view)));
+
+/* ---- render home ---- */
+function render(d){DATA=d;
+  $('#sb-host').textContent=d.host+'  •  '+d.time;
+  const on=d.devices.filter(x=>x.up).length;
+  $('#sb-items').textContent=d.devices.length+' computers, '+d.drives.length+' drives ('+on+' online)';
+  renderKpis(d); renderAlerts(d);
+  // sidebar computers (click to filter drives to just that PC)
+  $('#navdevs').innerHTML=d.devices.map(v=>`<div class="navitem ${filterDev===v.ip?'pcsel':''}" onclick="pickDev('${v.ip}')"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M8 20h8"/></svg><span>${esc(v.name)}</span><span class="dot ${v.up?'on':'off'}"></span></div>`).join('');
+  // computers
+  $('#devs').innerHTML=d.devices.map(dev=>{
+    const chip=(l,ok)=>`<span class="btn" style="pointer-events:none;height:22px;font-size:10.5px;${ok?'':'opacity:.5'}">${l}</span>`;
+    let a='';
+    if(!dev.isLocal){
+      a+=`<div class="btn" ${dev.up?'':'disabled'} onclick="act('do=rdp&ip=${dev.ip}','Remote Desktop')">${IC.remote}Remote</div>`;
+      a+=`<div class="btn parsec" onclick="act('do=parsec&peer=${encodeURIComponent(dev.parsec||'')}','Parsec')">${PLOGO}Parsec</div>`;
+      a+=`<div class="btn" ${dev.up?'':'disabled'} onclick="act('do=share&ip=${dev.ip}','Files')">${IC.files}Files</div>`;
+      a+=`<div class="btn" ${(dev.mac&&!dev.up)?'':'disabled'} onclick="act('do=wol&mac=${encodeURIComponent(dev.mac)}','Wake')">${IC.wake}Wake</div>`;
+    }
+    if(dev.isPlex)a+=`<div class="btn" ${dev.plex?'':'disabled'} onclick="window.open('http://${dev.ip}:32400/web','_blank')">${IC.plex}Plex</div>`;
+    a+=`<div class="pwrwrap"><div class="btn" ${dev.up?'':'disabled'} onclick="togglePwr(event,this)">${IC.pwr}Power</div><div class="pwrmenu">${dev.isLocal?`<button onclick="pwr('sleep','${dev.ip}',true,'${esc(dev.name)}')">Sleep</button>`:''}<button onclick="pwr('restart','${dev.ip}',${dev.isLocal},'${esc(dev.name)}')">Restart</button><button class="danger" onclick="pwr('shutdown','${dev.ip}',${dev.isLocal},'${esc(dev.name)}')">Shut down</button></div></div>`;
+    return `<div class="dev">
+      <div class="top"><svg class="pcico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="4" width="19" height="12.5" rx="1.5"/><path d="M8 20.5h8M12 16.5v4"/></svg>
+        <div><div class="nm">${esc(dev.name)}${dev.isLocal?'<span class="badge">THIS PC</span>':''}</div><div class="rl">${esc(dev.role)}</div></div>
+        <span class="st ${dev.up?'on':'off'}">${dev.up?'Online':'Offline'}</span></div>
+      <div class="ip" onclick="copyIp('${dev.ip}')">${dev.ip}${dev.up?'  •  '+dev.ms+' ms':''}</div>
+      <div class="acts">${a}</div></div>`;
+  }).join('');
+  // drives (click to browse into it) - filtered to the selected computer if any
+  const fdev=filterDev?d.devices.find(z=>z.ip===filterDev):null;
+  $('#drivesLabel').textContent=fdev?('Drives on '+fdev.name):'Drives and storage';
+  const dr=d.drives.filter(driveMatch);
+  $('#drives').innerHTML=dr.length?dr.map(x=>`<div class="drive" onclick="openDrive('${x.letter}')">
+    ${x.network?DI_NET:DI_LOCAL}
+    <div class="dinfo">
+      <div class="dname">${x.network?'Network Drive':'Local Disk'} (${x.letter}:)</div>
+      ${x.network?`<div class="dsub">${esc(x.source)}</div>`:''}
+      <div class="track"><div class="fill ${x.usedPct>=90?'hot':''}" style="width:${x.usedPct}%"></div></div>
+      <div class="dfree">${tb(x.freeGB)} free of ${tb(x.totalGB)}</div>
+    </div></div>`).join(''):`<div class="empty">No drives from ${esc(fdev?fdev.name:'')} are mapped here. Use the <b>Files</b> button on its card to open its shares.</div>`;
+}
+async function load(manual){try{const r=await fetch('/api/status');DATA=await r.json();render(DATA);if(manual)toast('Refreshed');}catch(e){}}
+$('#autoBtn').addEventListener('click',()=>load(true));
+
+/* ---- power menu ---- */
+function togglePwr(e,btn){e.stopPropagation();const m=btn.nextElementSibling;const o=m.classList.contains('open');closePwr();if(!o)m.classList.add('open');}
+function closePwr(){$$('.pwrmenu.open').forEach(m=>m.classList.remove('open'));}
+function pwr(d,ip,isLocal,name){const L={sleep:'Sleep',restart:'Restart',shutdown:'Shut down'}[d];closePwr();
+  if(!confirm(L+' '+name+'?'+(d==='sleep'?'':'\n\nA 5-second warning shows on that PC.')))return;
+  act('do='+d+'&ip='+ip+(isLocal?'&local=1':''),L);}
+document.addEventListener('click',closePwr);
+
+/* ---- find ---- */
+function rowHtml(f){const s=f.full.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+  return `<div class="rrow" onclick="act('do=reveal&path='+encodeURIComponent('${s}'),'Opening folder')"><svg class="fi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M13 2v7h7"/></svg><span class="rn">${esc(f.name)}</span><span class="rd">${esc(f.dir)}</span></div>`;}
+async function search(){const q=$('#fq').value.trim();if(q.length<2){$('#results').innerHTML='<div class="empty">Type at least 2 letters to search.</div>';return;}
+  try{const r=await fetch('/api/search?q='+encodeURIComponent(q));const j=await r.json();
+    $('#results').innerHTML=j.results.length?j.results.map(rowHtml).join(''):'<div class="empty">No files match "'+esc(q)+'".</div>';}catch(e){}}
+async function aisearch(){const q=$('#fq').value.trim();if(q.length<2)return;$('#results').innerHTML='<div class="empty">Thinking...</div>';
+  try{const r=await fetch('/api/aisearch?q='+encodeURIComponent(q));const j=await r.json();
+    if(j.error){$('#results').innerHTML='<div class="empty">'+esc(j.msg)+'</div>';return;}
+    const head=j.note?`<div class="airow"><b>AI</b> &nbsp;${esc(j.note)}${j.provider?' &nbsp;·&nbsp; via '+esc(j.provider):''}</div>`:'';
+    $('#results').innerHTML=head+(j.results.length?j.results.map(rowHtml).join(''):'<div class="empty">Nothing matched.</div>');}catch(e){$('#results').innerHTML='<div class="empty">AI search failed.</div>';}}
+function reindex(){fetch('/api/reindex');toast('Rebuilding index...');setTimeout(idxstat,1500);}
+async function idxstat(){try{const r=await fetch('/api/indexstat');const j=await r.json();
+  $('#idxstat').textContent=j.everything?'Everything - instant':(j.building?('indexing '+(j.count||0).toLocaleString()):((j.count||0).toLocaleString()+' files'));}catch(e){}}
+$('#aiseg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;aiMode=b.dataset.m==='ai';
+  $$('#aiseg button').forEach(x=>x.classList.toggle('on',x===b));
+  $('#fq').placeholder=aiMode?'Ask in plain English, then press Enter...':'Search files on any drive by name...';});
+$('#fq').addEventListener('keydown',e=>{if(e.key==='Enter'&&aiMode){e.preventDefault();aisearch();}});
+$('#fq').addEventListener('input',()=>{if(aiMode)return;clearTimeout(fqTimer);fqTimer=setTimeout(search,220);});
+
+/* ---- settings: keys ---- */
+async function loadKeys(){try{const r=await fetch('/api/keys');const j=await r.json();
+  $('#keys').innerHTML=j.providers.map(p=>`<div class="krow">
+    <span class="kname">${p.id}${p.id===j.default?'<span class="badge">DEFAULT</span>':''}</span>
+    <span class="kstate ${p.hasKey?'set':''}">${p.hasKey?esc(p.masked):'not set'}</span>
+    <input class="kin" id="k-${p.id}" type="password" placeholder="paste ${p.id} API key">
+    <label class="kdef"><input type="checkbox" id="d-${p.id}" ${p.id===j.default?'checked':''}>default</label>
+    <button class="ksave" onclick="saveKey('${p.id}')">Save</button></div>`).join('');
+  }catch(e){$('#keys').innerHTML='<div class="empty">Could not load.</div>';}}
+async function saveKey(id){const key=$('#k-'+id).value.trim();const setDefault=$('#d-'+id).checked;
+  if(!key&&!setDefault){toast('Enter a key first');return;}
+  try{const r=await fetch('/api/setkey',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({provider:id,key:key||undefined,setDefault})});
+    const j=await r.json();if(j.ok){toast(id+' saved');$('#k-'+id).value='';loadKeys();}else{toast('Save failed: '+j.msg);}}catch(e){toast('Save failed');}}
+$$('.tpick').forEach(c=>c.addEventListener('click',()=>setTheme(c.dataset.theme)));
+$('#modeseg')&&$('#modeseg').addEventListener('click',e=>{const b=e.target.closest('button');if(b)setMode(b.dataset.mode);});
+async function loadPeers(){
+  if(!DATA){$('#peers').innerHTML='<div class="empty">Loading devices...</div>';return;}
+  const rows=DATA.devices.filter(d=>!d.isLocal);
+  $('#peers').innerHTML=rows.length?rows.map(d=>`<div class="krow">
+    <span class="kname" style="text-transform:none;width:120px">${esc(d.name)}</span>
+    <span class="kstate ${d.parsec?'set':''}">${d.parsec?esc(d.parsec):'not set'}</span>
+    <input class="kin" id="p-${d.ip}" placeholder="Parsec peer ID" value="${esc(d.parsec||'')}">
+    <button class="ksave" onclick="savePeer('${d.ip}')">Save</button></div>`).join(''):'<div class="empty">No remote computers.</div>';
+}
+async function savePeer(ip){const el=document.getElementById('p-'+ip);const peer=el?el.value.trim():'';
+  try{const r=await fetch('/api/setpeer',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ip,peer})});
+    const j=await r.json();if(j.ok){toast('Parsec ID saved');load();setTimeout(loadPeers,600);}else toast('Save failed');}catch(e){toast('Save failed');}}
+
+$('#fblist').addEventListener('dblclick',e=>{const row=e.target.closest('.fbrow');if(!row)return;const it=fbItems[+row.dataset.i];if(it){it.dir?openPath(it.full):act('do=openfile&path='+encodeURIComponent(it.full),'Opening '+it.name);}});
+$('#fblist').addEventListener('contextmenu',e=>{const row=e.target.closest('.fbrow');if(!row)return;const it=fbItems[+row.dataset.i];if(it)showCtx(e,it);});
+$('#fblist').addEventListener('dragstart',e=>{const row=e.target.closest('.fbrow');if(!row)return;const it=fbItems[+row.dataset.i];if(it){e.dataTransfer.setData('text/plain',it.full);e.dataTransfer.effectAllowed='copy';}});
+$('#fblist').addEventListener('dragover',e=>{const row=e.target.closest('.fbrow');if(!row)return;const it=fbItems[+row.dataset.i];if(it&&it.dir){e.preventDefault();e.dataTransfer.dropEffect='copy';row.classList.add('drop');}});
+$('#fblist').addEventListener('dragleave',e=>{const row=e.target.closest('.fbrow');if(row)row.classList.remove('drop');});
+$('#fblist').addEventListener('drop',e=>{const row=e.target.closest('.fbrow');if(!row)return;row.classList.remove('drop');const dest=fbItems[+row.dataset.i];const src=e.dataTransfer.getData('text/plain');if(dest&&dest.dir&&src&&src!==dest.full){e.preventDefault();act('do=copy&src='+encodeURIComponent(src)+'&dst='+encodeURIComponent(dest.full),'Copying…');const cp=curPath;setTimeout(()=>{if(cp)openPath(cp);},900);}});
+$('#fbpath').addEventListener('click',e=>{const s=e.target.closest('.cseg');if(!s)return;if(s.dataset.home!==undefined)goHome();else if(s.dataset.p)openPath(s.dataset.p);});
+document.addEventListener('click',hideCtx);
+
+setInterval(()=>AUTO&&view==='home'&&load(),8000);
+setInterval(idxstat,5000);
+load();idxstat();loadHist();setInterval(loadHist,60000);
+</script>
+</body></html>

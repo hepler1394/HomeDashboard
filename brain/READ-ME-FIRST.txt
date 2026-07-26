@@ -1,0 +1,37 @@
+HOME DASHBOARD  -  set up a new PC
+===================================
+
+TO ADD A COMPUTER (for example the Media PC):
+
+  1. Plug this USB into that computer.
+  2. Open this "HomePC-Setup" folder.
+  3. Double-click:   ENROLL-THIS-PC.bat
+  4. If Windows shows a blue "Windows protected your PC" box,
+     click "More info", then "Run anyway".
+  5. Wait until it says "Done", then close the window.
+
+That is the whole job. The PC will appear in your dashboard within
+about a minute. Open the dashboard from any PC's web browser at:
+
+     http://192.168.1.174:8788
+
+GOOD TO KNOW
+------------
+  - Safe to run more than once. Running it again just updates the PC.
+  - No administrator rights needed.
+  - It installs a tiny background helper so the dashboard can see and
+    control this PC (installs, VPN, play a movie, screen, etc.).
+  - Tailscale gets installed automatically. If you want to reach the
+    dashboard from your phone while AWAY from home, run this once on
+    the PC after setup:   tailscale up
+
+WHAT ELSE IS IN THIS FOLDER
+---------------------------
+  ENROLL-THIS-PC.bat   <- the one you double-click (start here)
+  bootstrap.ps1        <- the setup script it runs
+  homedash-agent.ps1   <- the background helper (offline backup copy)
+  homedash-launcher.ps1<- lets the dashboard open Remote/Files/Parsec
+
+The older files in this folder are from the previous dashboard and are
+no longer needed. They are left in place just in case, but you can
+ignore them.

@@ -1,0 +1,1225 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Home Brain</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#0d1220">
+<link rel="icon" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Home Brain">
+<style>
+:root{
+  --bg1:#080b12;--bg2:#0d1220;--panel:rgba(255,255,255,.04);--panel2:rgba(255,255,255,.07);
+  --line:rgba(255,255,255,.09);--line2:rgba(255,255,255,.16);
+  --txt:#e9eef7;--mut:#8a97ab;--dim:#5c6a7e;
+  --acc:#38bdf8;--acc2:#818cf8;--ok:#34d399;--bad:#f87171;--warn:#fbbf24;
+  --shadow:0 12px 34px rgba(0,0,0,.5);
+}
+*{box-sizing:border-box;min-width:0}
+html,body{max-width:100%;overflow-x:hidden}
+body{margin:0;min-height:100vh;color:var(--txt);font-family:"Segoe UI Variable Text","Segoe UI",system-ui,Arial,sans-serif;
+  background:radial-gradient(1200px 700px at 10% -10%,#132244 0,transparent 55%),radial-gradient(1000px 600px at 100% 0,#1c1440 0,transparent 50%),linear-gradient(160deg,var(--bg1),var(--bg2));background-attachment:fixed}
+a{color:inherit;text-decoration:none}.hidden{display:none!important}
+.app{display:grid;grid-template-columns:230px minmax(0,1fr) 346px;min-height:100vh}
+/* sidebar */
+.side{border-right:1px solid var(--line);padding:16px 12px;display:flex;flex-direction:column;gap:3px;position:sticky;top:0;height:100vh;overflow:auto}
+.brand{display:flex;align-items:center;gap:10px;padding:6px 8px 14px}
+.brand .logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(140deg,var(--acc),var(--acc2));display:grid;place-items:center;font-size:18px}
+.brand b{font-size:15px;letter-spacing:.3px}
+.slabel{font-size:10.5px;text-transform:uppercase;letter-spacing:1px;color:var(--dim);margin:12px 8px 4px;font-weight:700}
+.nav{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:9px;cursor:pointer;color:var(--mut);font-size:13.5px;font-weight:550}
+.nav:hover{background:var(--panel);color:var(--txt)}.nav.on{background:var(--panel2);color:var(--txt)}
+.nav .dot{width:8px;height:8px;border-radius:50%;background:var(--dim);flex:0 0 auto}
+.nav .dot.on{background:var(--ok);box-shadow:0 0 7px var(--ok)}.nav .dot.off{background:var(--bad)}
+/* main */
+.main{padding:22px 26px 60px;max-width:1320px}
+/* Right-hand AI assistant panel: a column on wide screens, a slide-over on small */
+.rpanel{border-left:1px solid var(--line);height:100vh;position:sticky;top:0;display:flex;flex-direction:column;gap:8px;padding:16px 15px;min-width:0;background:linear-gradient(180deg,rgba(129,140,248,.06),transparent 24%)}
+.rp-head{display:flex;align-items:center;gap:9px;font-size:14px;font-weight:660}
+.rp-head .gdot{width:11px;height:11px;border-radius:50%;flex:0 0 auto;background:conic-gradient(from var(--ringA),#38bdf8,#a855f7,#ec4899,#38bdf8);box-shadow:0 0 9px rgba(129,140,248,.6);animation:ringspin 4s linear infinite,glowpulse 2.6s ease-in-out infinite}
+.rp-head .rp-x{margin-left:auto;cursor:pointer;color:var(--mut);font-size:23px;line-height:.6;display:none}
+.rp-sub{font-size:11px;color:var(--dim);line-height:1.45;margin:-2px 0 2px}
+#chatlog{flex:1;overflow:auto;display:flex;flex-direction:column;gap:9px;padding-right:2px}
+.rp-empty{color:var(--dim);font-size:12.5px;text-align:center;margin:auto;padding:14px;line-height:1.8}
+.rp-in{display:flex;gap:7px;align-items:center}.rp-in input{flex:1}
+.aifab{display:none}.aifab .ic{width:23px;height:23px;color:#fff;stroke-width:2}
+@media (max-width:1180px){
+  .app{grid-template-columns:230px minmax(0,1fr)}
+  .rpanel{position:fixed;top:0;bottom:0;right:0;left:auto;width:min(410px,100vw);z-index:96;transform:translateX(101%);transition:transform .25s cubic-bezier(.2,.7,.3,1);box-shadow:-14px 0 44px rgba(0,0,0,.55);background:var(--bg2)}
+  .rpanel.open{transform:translateX(0)}
+  .rp-head .rp-x{display:block}
+  .aifab{display:flex;position:fixed;right:16px;bottom:16px;z-index:80;width:54px;height:54px;border-radius:50%;align-items:center;justify-content:center;cursor:pointer;border:0;
+    background:conic-gradient(from var(--ringA),#38bdf8,#6366f1,#a855f7,#ec4899,#38bdf8);box-shadow:0 10px 26px rgba(129,140,248,.5);animation:ringspin 6s linear infinite}
+}
+@media (max-width:820px){.rpanel{width:100vw}.aifab{display:none}}
+.hd{display:flex;align-items:center;gap:14px;margin-bottom:18px}
+.hd h1{margin:0;font-size:21px;font-weight:660}
+.hd .sp{flex:1}
+.chip{display:inline-flex;align-items:center;gap:7px;padding:6px 11px;border-radius:999px;background:var(--panel);border:1px solid var(--line);font-size:12px;color:var(--mut)}
+.chip b{color:var(--txt)}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:8px 13px;border-radius:9px;cursor:pointer;background:var(--panel);border:1px solid var(--line2);color:var(--txt);font-size:12.5px;font-weight:560;transition:.15s;user-select:none}
+.btn:hover{background:var(--panel2);border-color:var(--acc)}
+.btn.p{background:linear-gradient(140deg,var(--acc),var(--acc2));color:#06121f;border:0}
+.btn.warn:hover{border-color:var(--bad);color:var(--bad)}
+.btn.sm{padding:6px 10px;font-size:12px}
+select,input,textarea{background:rgba(0,0,0,.28);border:1px solid var(--line);border-radius:9px;color:var(--txt);font-size:13px;padding:8px 11px;font-family:inherit;outline:0}
+select:focus,input:focus,textarea:focus{border-color:var(--acc)}
+.grid{display:grid;gap:14px}
+.cards{grid-template-columns:repeat(auto-fill,minmax(310px,1fr))}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:16px;box-shadow:var(--shadow)}
+.pc{background:#0f1826;position:relative;transition:transform .2s cubic-bezier(.2,.7,.3,1),box-shadow .2s ease,border-color .2s ease}
+.pc.off{opacity:.72}
+@media (hover:hover){
+  .pc:hover{transform:translateY(-5px);box-shadow:0 22px 46px rgba(0,0,0,.6);border-color:var(--line2)}
+  .dcard{transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease}
+  .dcard:hover{transform:translateY(-3px);box-shadow:0 16px 34px rgba(0,0,0,.5)}
+}
+/* Gemini-style: a colorful ring that rotates AND pulses around each card, with a
+   soft matching glow halo behind it. (Replaces the old solid green status bar.) */
+@property --ringA{syntax:'<angle>';inherits:false;initial-value:0deg}
+.pc::before{content:"";position:absolute;inset:-2px;border-radius:17px;z-index:-1;pointer-events:none;
+  background:conic-gradient(from var(--ringA),#38bdf8,#6366f1,#a855f7,#ec4899,#22d3ee,#38bdf8);
+  filter:blur(11px);animation:ringspin 6s linear infinite,glowpulse 3.6s ease-in-out infinite}
+.pc::after{content:"";position:absolute;inset:0;border-radius:15px;padding:1.6px;pointer-events:none;z-index:3;
+  background:conic-gradient(from var(--ringA),#38bdf8,#6366f1,#a855f7,#ec4899,#22d3ee,#38bdf8);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;mask-composite:exclude;
+  animation:ringspin 6s linear infinite,ringpulse 3.6s ease-in-out infinite}
+.pc.off::before{filter:blur(11px) grayscale(.7);opacity:.12}
+.pc.off::after{filter:grayscale(.7);opacity:.4}
+@keyframes ringspin{to{--ringA:360deg}}
+@keyframes ringpulse{0%,100%{opacity:.62}50%{opacity:1}}
+@keyframes glowpulse{0%,100%{opacity:.12}50%{opacity:.22}}
+@media (prefers-reduced-motion:reduce){.pc::before,.pc::after{animation:none;opacity:.4}}
+/* Google-style multicolor "Drive" wordmark */
+.gw i{font-style:normal;font-weight:700}
+.gw i:nth-child(1){color:#4285F4}.gw i:nth-child(2){color:#EA4335}
+.gw i:nth-child(3){color:#FBBC05}.gw i:nth-child(4){color:#4285F4}
+.gw i:nth-child(5){color:#34A853}
+.pchead{display:flex;align-items:flex-start;gap:11px}
+.ring{width:13px;height:13px;border-radius:50%;background:var(--bad);flex:0 0 auto;margin-top:4px}
+.ring.on{background:var(--ok);box-shadow:0 0 0 0 rgba(52,211,153,.5);animation:pulse 2.4s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(52,211,153,.5)}70%{box-shadow:0 0 0 8px rgba(52,211,153,0)}100%{box-shadow:0 0 0 0 rgba(52,211,153,0)}}
+.pcname{font-size:16px;font-weight:640}.pcsub{font-size:11.5px;color:var(--mut)}
+.pill{margin-left:auto;font-size:10.5px;font-weight:750;letter-spacing:.5px;padding:4px 9px;border-radius:999px;flex:0 0 auto;white-space:nowrap}
+.pill.on{color:var(--ok);background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.3)}
+.pill.off{color:var(--bad);background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3)}
+.mrow{display:flex;gap:16px;margin:13px 0 4px}
+.meter{flex:1}.meter .lab{font-size:10.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;display:flex;justify-content:space-between}
+.bar{height:7px;border-radius:6px;background:rgba(255,255,255,.08);margin-top:5px;overflow:hidden}
+.bar>i{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,var(--acc),var(--acc2))}
+.bar>i.warn{background:linear-gradient(90deg,#fbbf24,#f59e0b)}.bar>i.hot{background:linear-gradient(90deg,#fb7185,#ef4444)}
+.piarow{display:flex;align-items:center;gap:9px;margin:12px 0 10px;font-size:12.5px}
+.viadot{width:8px;height:8px;border-radius:50%}.viadot.on{background:var(--ok)}.viadot.off{background:var(--bad)}.viadot.na{background:var(--dim)}
+.acts{display:flex;flex-wrap:wrap;gap:7px;margin-top:6px}
+.cardbtns{display:flex;flex-wrap:wrap;gap:7px;margin-top:13px}
+.cbtn{display:inline-flex;align-items:center;gap:5px;padding:6px 10px;border-radius:8px;cursor:pointer;background:var(--panel2);border:1px solid var(--line2);color:var(--txt);font-size:11.5px;font-weight:550;transition:.14s;user-select:none}
+.cbtn:hover{border-color:var(--acc);transform:translateY(-1px)}
+.cbtn.dis{opacity:.35;pointer-events:none}
+.cbtn.go:hover{border-color:var(--ok);color:var(--ok)}
+.cbtn.warn:hover{border-color:var(--bad);color:var(--bad)}
+.drivegrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(268px,1fr));gap:12px;margin-top:2px}
+.dcard{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:13px 14px;display:flex;gap:12px;align-items:center;cursor:pointer;transition:.15s;box-shadow:var(--shadow)}
+.dcard:hover{border-color:var(--acc)}
+.dcard .dicon{width:34px;height:34px;flex:0 0 auto;display:grid;place-items:center;border-radius:9px;background:rgba(255,255,255,.05);font-size:17px}
+.dcard .dbody{flex:1;min-width:0}
+.dcard .dt{font-weight:640;font-size:13px}
+.dcard .dsrc{font-size:11px;color:var(--mut);font-family:Consolas,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dcard .dfree{font-size:11.5px;color:var(--dim);margin-top:2px}
+.dcard .track{background:rgba(255,255,255,.08);border-radius:6px;height:6px;overflow:hidden;margin:5px 0}
+.dcard .track>i{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,var(--acc),var(--acc2))}
+.dcard .track>i.warn{background:linear-gradient(90deg,#fbbf24,#f59e0b)}.dcard .track>i.hot{background:linear-gradient(90deg,#fb7185,#ef4444)}
+/* God Mode: terminal + file browser */
+.fbrow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 11px;font-size:12.5px;border-bottom:1px solid var(--line)}
+.fbrow.dir{cursor:pointer}.fbrow:hover{background:var(--panel2)}
+.fbrow .fbn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fbmeta{color:var(--dim);font-size:11px;display:flex;gap:7px;align-items:center;flex:0 0 auto}
+.fbx{cursor:pointer;padding:1px 5px;border-radius:5px;font-size:12.5px}.fbx:hover{background:var(--panel)}
+.godwarn{font-size:11px;color:#fb7185;font-weight:600}
+.popmenu{position:fixed;z-index:120;background:#141c2b;border:1px solid var(--line2);border-radius:10px;padding:6px;display:flex;flex-direction:column;gap:2px;box-shadow:var(--shadow);min-width:130px}
+.popmenu button{background:transparent;border:0;color:var(--txt);text-align:left;padding:8px 11px;border-radius:7px;font-size:12.5px;cursor:pointer;font-family:inherit;font-weight:550}
+.popmenu button:hover{background:var(--panel2)}
+.popmenu button.danger{color:var(--bad)}.popmenu button.danger:hover{background:rgba(248,113,113,.12)}
+.alert{display:flex;align-items:center;gap:10px;padding:11px 15px;border-radius:11px;font-size:13px;margin-bottom:10px}
+.alert.bad{background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);color:#fca5a5}
+.alert.warn{background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);color:#fcd34d}
+.drv{display:flex;align-items:center;gap:8px;font-size:12px;padding:5px 0;border-top:1px solid rgba(255,255,255,.05)}
+.drv .dl{font-weight:700;width:26px}.drv .db{flex:1}.drv .dn{color:var(--mut);white-space:nowrap;font-variant-numeric:tabular-nums}
+.toast{position:fixed;right:20px;bottom:20px;display:flex;flex-direction:column;gap:9px;z-index:80}
+.toast div{background:#131b2b;border:1px solid var(--line2);border-left:3px solid var(--acc);border-radius:10px;padding:11px 15px;font-size:13px;box-shadow:var(--shadow);min-width:220px;animation:sl .25s}
+.toast div.err{border-left-color:var(--bad)}
+@keyframes sl{from{opacity:0;transform:translateX(18px)}to{opacity:1}}
+.h2{display:flex;align-items:center;gap:10px;margin:22px 0 12px;font-size:12.5px;text-transform:uppercase;letter-spacing:1px;color:var(--mut);font-weight:700}
+.h2 .ln{flex:1;height:1px;background:var(--line)}
+.app-tile{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:6px}
+.app-tile .em{font-size:22px}.app-tile .an{font-size:13px;font-weight:600}.app-tile .ad{font-size:11px;color:var(--mut);flex:1}
+.bundle{background:linear-gradient(140deg,rgba(56,189,248,.08),rgba(129,140,248,.05));border:1px solid var(--line2);border-radius:14px;padding:15px}
+.bundle .bn{font-size:15px;font-weight:640}.bundle .bd{font-size:12px;color:var(--mut);margin:3px 0 8px}
+.bundle .bapps{font-size:11px;color:var(--dim);margin-bottom:10px}
+.msg{max-width:78%;padding:11px 14px;border-radius:13px;font-size:13.5px;line-height:1.5;white-space:pre-wrap}
+.msg.u{background:linear-gradient(140deg,var(--acc),var(--acc2));color:#06121f;margin-left:auto;border-bottom-right-radius:4px}
+.msg.a{background:var(--panel2);border:1px solid var(--line);border-bottom-left-radius:4px}
+.msg.t{font-size:11.5px;color:var(--dim);font-family:Consolas,monospace;background:rgba(0,0,0,.25);border:1px dashed var(--line);max-width:100%}
+/* AI chat: thin pulsating glow around the whole chat box */
+.chatglow{border:1px solid rgba(96,165,250,.45)!important;animation:chatglow 3.2s ease-in-out infinite}
+@keyframes chatglow{
+  0%,100%{box-shadow:0 0 5px 1px rgba(96,165,250,.30),0 0 16px 2px rgba(52,211,153,.10);border-color:rgba(96,165,250,.45)}
+  50%{box-shadow:0 0 9px 2px rgba(52,211,153,.38),0 0 24px 5px rgba(96,165,250,.14);border-color:rgba(52,211,153,.55)}}
+#chatin:focus{outline:none;border-color:rgba(96,165,250,.6);box-shadow:0 0 7px 1px rgba(96,165,250,.28)}
+.attach{display:inline-flex;align-items:center;gap:7px;background:rgba(96,165,250,.10);border:1px solid rgba(96,165,250,.35);border-radius:9px;padding:5px 10px;font-size:12px;margin-bottom:8px;max-width:100%}
+.attach code{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.attach .x{cursor:pointer;color:var(--mut);font-weight:700;padding:0 2px}
+/* Drive file browser */
+.fsbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.crumb{cursor:pointer;color:var(--acc);font-size:13px;white-space:nowrap}
+.crumb:hover{text-decoration:underline}
+.crumbsep{color:var(--dim);font-size:12px}
+.fsrow{display:flex;align-items:center;gap:10px;padding:7px 9px;border-radius:9px;font-size:13px;cursor:default;user-select:none}
+.fsrow:hover{background:rgba(96,165,250,.07)}
+.fsrow .fname{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fsrow .fmeta{color:var(--mut);font-size:11.5px;white-space:nowrap}
+.fsrow.dir .fname{font-weight:600}
+.fsrow.cut{opacity:.45}
+#ctxmenu{position:fixed;z-index:300;background:var(--panel2,#0d1526);border:1px solid var(--line2,#2a3a5a);border-radius:11px;padding:5px;min-width:190px;box-shadow:0 12px 34px rgba(0,0,0,.55);display:none}
+#ctxmenu .ci{display:flex;align-items:center;gap:9px;padding:8px 11px;border-radius:7px;font-size:13px;cursor:pointer;white-space:nowrap}
+#ctxmenu .ci:hover{background:rgba(96,165,250,.12)}
+#ctxmenu .ci.danger:hover{background:rgba(248,113,113,.14);color:var(--bad)}
+#ctxmenu .sep{height:1px;background:var(--line,#1c2941);margin:4px 6px}
+/* Drag & drop: PC dock (appears while dragging a file) + folder drop targets */
+.fsrow[draggable="true"]{cursor:grab}
+.fsrow.dropon{background:rgba(52,211,153,.12);outline:1.5px dashed var(--ok);outline-offset:-1.5px}
+#pcdock{position:fixed;left:50%;bottom:18px;transform:translateX(-50%) translateY(14px);z-index:290;display:none;gap:10px;align-items:center;background:var(--panel2,#0d1526);border:1px solid var(--line2,#2a3a5a);border-radius:14px;padding:10px 14px;box-shadow:0 14px 40px rgba(0,0,0,.6);opacity:0;transition:opacity .18s,transform .18s}
+#pcdock.on{display:flex;opacity:1;transform:translateX(-50%) translateY(0)}
+.dockpc{display:flex;align-items:center;gap:8px;padding:10px 16px;border:1.5px dashed var(--line2,#2a3a5a);border-radius:11px;font-size:13.5px;font-weight:600;transition:.12s}
+.dockpc.hot{border-color:var(--acc);background:rgba(96,165,250,.12);box-shadow:0 0 12px rgba(96,165,250,.35);transform:scale(1.04)}
+.dockhint{color:var(--mut);font-size:11.5px;padding-right:2px}
+/* HomeShare: it's ONE folder synced live to every PC, so one drop zone (not one
+   box per PC) + a panel showing which machines it's mirrored to. */
+.hswrap{display:grid;grid-template-columns:1.55fr 1fr;gap:14px;margin-bottom:18px}
+@media (max-width:860px){.hswrap{grid-template-columns:1fr}}
+.hszone{border:2px dashed var(--line2,#2a3a5a);border-radius:15px;padding:20px 20px;display:flex;align-items:center;gap:16px;cursor:pointer;transition:.15s;background:rgba(56,189,248,.03)}
+.hszone:hover{border-color:var(--acc);background:rgba(56,189,248,.06)}
+.hszone.hot{border-color:var(--ok);background:rgba(52,211,153,.08);box-shadow:0 0 18px rgba(52,211,153,.25);transform:scale(1.008)}
+.hszone .hsic{width:48px;height:48px;flex:0 0 auto;display:grid;place-items:center;border-radius:13px;background:rgba(56,189,248,.1)}
+.hszone .hsic .ic,.hszone .hsic svg{width:26px;height:26px;color:var(--acc)}
+.hszone .hz-t{font-size:15px;font-weight:660}
+.hszone .hz-d{font-size:12px;color:var(--mut);margin-top:2px;line-height:1.45}
+.hspanel{border:1px solid var(--line);border-radius:15px;padding:13px 16px;background:var(--panel)}
+.hspanel .hp-h{font-size:10.5px;text-transform:uppercase;letter-spacing:.7px;color:var(--dim);font-weight:700;margin-bottom:6px}
+.hspc{display:flex;align-items:center;gap:9px;padding:6px 0;font-size:13px;font-weight:560;border-top:1px solid rgba(255,255,255,.05)}
+.hspc:first-of-type{border-top:0}
+.hspc .sdot{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
+.hspc .sdot.on{background:var(--ok);box-shadow:0 0 6px var(--ok)}.hspc .sdot.off{background:var(--dim)}
+.hspc .hspc-s{margin-left:auto;font-size:11px;color:var(--dim);font-weight:500}
+.hsst{font-size:11.5px;color:var(--acc);min-height:15px;margin-top:5px}
+/* Sidebar quick actions */
+.qact{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding:2px 2px 6px}
+.qbtn{display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 5px;border:1px solid var(--line2,#2a3a5a);border-radius:10px;font-size:11.5px;font-weight:600;cursor:pointer;color:var(--mut);transition:.12s;user-select:none;white-space:nowrap}
+.qbtn:hover{color:var(--txt);border-color:var(--acc);background:rgba(96,165,250,.08)}
+.qbtn.ok:hover{border-color:var(--ok);background:rgba(52,211,153,.08)}
+.qbtn.warn:hover{border-color:var(--bad);background:rgba(248,113,113,.08)}
+.qbtn .ic,.qbtn svg{width:14px;height:14px;flex:0 0 auto}
+.poster{width:120px;flex:0 0 auto}.poster img{width:120px;height:180px;object-fit:cover;border-radius:9px;background:#1a2233;border:1px solid var(--line)}
+.poster .pt{font-size:11.5px;margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kbd{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:flex-start;justify-content:center;z-index:90;padding-top:14vh}
+.kbd.on{display:flex}
+.kbox{width:560px;max-width:92vw;background:#111826;border:1px solid var(--line2);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+.kbox input{width:100%;border:0;border-bottom:1px solid var(--line);border-radius:0;font-size:15px;padding:15px}
+.kres{max-height:320px;overflow:auto}.kitem{padding:11px 15px;font-size:13px;cursor:pointer;display:flex;gap:9px;align-items:center}.kitem:hover,.kitem.sel{background:var(--panel2)}
+.field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}.field label{font-size:12px;color:var(--mut)}
+.row{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+code{background:rgba(0,0,0,.3);padding:2px 6px;border-radius:5px;font-size:12px}
+.spark{width:100%;height:24px;display:block;margin-top:7px;opacity:.85}
+.fc{color:var(--warn);font-weight:600}
+/* ---- Windows-style line icons (monochrome, inherit text color) ---- */
+.ic{width:1.05em;height:1.05em;display:inline-block;vertical-align:-0.16em;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:0 0 auto}
+.ic.fill{fill:currentColor;stroke:none}
+.nav .ic,.bitem .ic{width:18px;height:18px}
+.brand .logo .ic{width:20px;height:20px;stroke:#06121f}
+.cbtn .ic,.btn.sm .ic{width:15px;height:15px}
+.sdot{display:inline-block;width:9px;height:9px;border-radius:50%;vertical-align:middle;flex:0 0 auto}
+.sdot.ok{background:var(--ok)}.sdot.bad{background:var(--bad)}.sdot.warn{background:var(--warn)}.sdot.off{background:var(--dim)}
+/* ---- mobile (phone) layout ---- */
+.bnav{display:none}
+.quick{display:none}
+.mobonly{display:none!important}
+@media (max-width:820px){
+  .app{grid-template-columns:1fr}
+  .side{display:none}
+  .main{padding:14px 12px 96px;max-width:none;min-width:0;overflow-x:hidden}
+  .hd{flex-wrap:wrap;gap:8px;row-gap:8px}
+  .hd .sp{display:none}
+  .hd h1{font-size:18px;flex:1 1 auto}
+  .hd .chip{font-size:11.5px;padding:5px 9px}
+  #target{max-width:42vw}
+  .h2{flex-wrap:wrap;row-gap:6px}
+  .h2 select{max-width:52vw}
+  .card{padding:14px 13px}
+  .dcard .dsrc{max-width:64vw}
+  .mobonly{display:inline-flex!important}
+  .deskonly{display:none!important}
+  .grid.cards{grid-template-columns:1fr}
+  .drivegrid{grid-template-columns:1fr}
+  .cbtn{padding:9px 12px;font-size:12.5px}
+  .btn{padding:10px 14px}
+  .msg{max-width:92%}
+  .poster{width:104px}.poster img{width:104px;height:156px}
+  .quick{display:block;margin-bottom:12px}
+  .bnav{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:70;
+    background:rgba(10,14,24,.96);backdrop-filter:blur(12px);
+    border-top:1px solid var(--line);
+    padding:7px 4px calc(7px + env(safe-area-inset-bottom))}
+  .bitem{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;
+    font-size:10px;font-weight:600;color:var(--mut);padding:3px 0;border-radius:9px;cursor:pointer;user-select:none}
+  .bitem span{font-size:19px;line-height:1.1}
+  .bitem.on{color:var(--txt)}
+}
+</style></head>
+<body>
+<div class="app">
+  <nav class="side">
+    <div class="brand"><div class="logo"><i data-ic="hub"></i></div><b>Home Brain</b></div>
+    <div class="slabel">Control</div>
+    <div class="nav on" data-v="fleet"><i data-ic="fleet"></i> <span>Fleet</span></div>
+    <div class="nav" data-v="install"><i data-ic="install"></i> <span>Install apps</span></div>
+    <div class="nav" data-v="media"><i data-ic="media"></i> <span>Media / Plex</span></div>
+    <div class="nav" data-v="ytgrabber"><i data-ic="youtube"></i> <span>YT Grabber</span></div>
+    <div class="nav" data-v="deerflow"><i data-ic="research"></i> <span>DeerFlow</span></div>
+    <div class="nav" data-v="files"><i data-ic="files"></i> <span>Files</span></div>
+    <div class="nav" data-v="drive"><i data-ic="gdrive"></i> <span class="gw"><i style="color:#4285F4">G</i><i style="color:#EA4335">o</i><i style="color:#FBBC05">o</i><i style="color:#4285F4">g</i><i style="color:#34A853">l</i><i style="color:#EA4335">e</i> <i style="color:#4285F4">D</i><i style="color:#EA4335">r</i><i style="color:#FBBC05">i</i><i style="color:#4285F4">v</i><i style="color:#34A853">e</i></span></div>
+    <div class="nav" data-v="network"><i data-ic="network"></i> <span>Network</span></div>
+    <div class="nav" data-v="backups"><i data-ic="backups"></i> <span>Backups</span></div>
+    <div class="nav" data-v="settings"><i data-ic="settings"></i> <span>Settings</span></div>
+    <div class="slabel">Computers</div>
+    <div id="navpcs"></div>
+    <div class="slabel">Quick actions</div>
+    <div class="qact">
+      <div class="qbtn ok" onclick="vpnAll(true)"><i data-ic="lock"></i> VPN all ON</div>
+      <div class="qbtn warn" onclick="vpnAll(false)"><i data-ic="unlock"></i> VPN all OFF</div>
+      <div class="qbtn deskonly" onclick="openShare('192.168.1.174')"><i data-ic="files"></i> HomeShare</div>
+      <div class="qbtn" onclick="window.open('http://192.168.1.174:32400/web','_blank')"><i data-ic="media"></i> Plex</div>
+      <div class="qbtn" onclick="go('drive')"><i data-ic="cloud"></i> <span class="gw"><i>D</i><i>r</i><i>i</i><i>v</i><i>e</i></span></div>
+      <div class="qbtn" onclick="refresh();toast('Refreshed')"><i data-ic="refresh"></i> Refresh</div>
+    </div>
+    <div style="flex:1"></div>
+    <div class="nav" onclick="palette()" style="color:var(--dim)"><i data-ic="command"></i> <span>Command (Ctrl-K)</span></div>
+  </nav>
+  <main class="main">
+    <div class="hd">
+      <h1 id="title">Fleet</h1><div class="sp"></div>
+      <span class="chip"><b id="onlineCount">0</b> online</span>
+      <span class="chip">acting on <select id="target" style="padding:4px 8px"></select></span>
+      <div class="btn sm mobonly" onclick="palette()"><i data-ic="search"></i></div>
+      <div class="btn sm" onclick="refresh()"><i data-ic="refresh"></i> Refresh</div>
+    </div>
+    <div id="view"></div>
+  </main>
+  <aside class="rpanel" id="rpanel">
+    <div class="rp-head"><span class="gdot"></span>Assistant<span class="rp-x" onclick="toggleAI(false)">×</span></div>
+    <div class="rp-sub">Sees live fleet status &amp; can act — installs, VPN, media, power, files.</div>
+    <div id="chatlog"></div>
+    <div id="chatattach"></div>
+    <div class="rp-in"><input id="chatin" placeholder="Ask or tell me to do something…" onkeydown="if(event.key==='Enter')sendChat()"><div class="btn p" onclick="sendChat()">Send</div></div>
+  </aside>
+</div>
+<div class="aifab" onclick="toggleAI(true)" title="Assistant"><i data-ic="ai"></i></div>
+<nav class="bnav">
+  <div class="bitem on" data-v="fleet"><i data-ic="fleet"></i>Fleet</div>
+  <div class="bitem" data-v="install"><i data-ic="install"></i>Apps</div>
+  <div class="bitem" data-v="media"><i data-ic="media"></i>Media</div>
+  <div class="bitem" data-v="ai"><i data-ic="ai"></i>AI</div>
+  <div class="bitem" data-v="files"><i data-ic="files"></i>Files</div>
+  <div class="bitem" data-v="settings"><i data-ic="settings"></i>More</div>
+</nav>
+<div class="toast" id="toast"></div>
+<div class="kbd" id="kbd"><div class="kbox"><input id="kin" placeholder="Type a command… e.g. install vlc on couch, vpn off media, play on plex"><div class="kres" id="kres"></div></div></div>
+<script>
+const $=s=>document.querySelector(s), api=async(p,o={})=>{o.headers=Object.assign({'Content-Type':'application/json'},o.headers||{}); if(TOKEN)o.headers['X-Brain-Token']=TOKEN; const r=await fetch(p,o); return r.json();};
+/* ---- Windows-style icon set (Fluent line icons, monochrome) ---- */
+const ICON={
+ hub:'<circle cx="12" cy="12" r="2.4"/><circle cx="12" cy="4.2" r="1.5"/><circle cx="12" cy="19.8" r="1.5"/><circle cx="4.2" cy="12" r="1.5"/><circle cx="19.8" cy="12" r="1.5"/><path d="M12 6.6v3M12 14.4v3M6.6 12h3M14.4 12h3"/>',
+ fleet:'<rect x="3" y="4.5" width="18" height="12" rx="1.5"/><path d="M8.5 20h7M12 16.5v3.5"/>',
+ monitor:'<rect x="3" y="4.5" width="18" height="12" rx="1.5"/><path d="M8.5 20h7M12 16.5v3.5"/>',
+ install:'<path d="M12 3l8 4.4v9L12 20.8 4 16.4v-9L12 3z"/><path d="M4 7.6l8 4.4 8-4.4M12 12v8.6"/>',
+ media:'<rect x="3" y="4.5" width="18" height="15" rx="2"/><path d="M3 9h18M3 15h18M8 4.5v15M16 4.5v15"/>',
+ play:'<path d="M8 5.5l11 6.5-11 6.5v-13z"/>',
+ youtube:'<rect x="2.5" y="5.5" width="19" height="13" rx="4"/><path d="M10 9.2l5 2.8-5 2.8z"/>',
+ research:'<circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-4.7-4.7"/><path d="M10.5 7.5v6M7.5 10.5h6"/>',
+ files:'<path d="M3 7a2 2 0 0 1 2-2h3.5l2 2H19a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/>',
+ network:'<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c3 3.4 3 13.6 0 17M12 3.5c-3 3.4-3 13.6 0 17"/>',
+ wifi:'<path d="M4.5 11.5a11 11 0 0 1 15 0M7.5 14.7a6.5 6.5 0 0 1 9 0"/><circle cx="12" cy="18" r="1.1" fill="currentColor" stroke="none"/>',
+ ai:'<path d="M12 3.2l1.7 4.9 4.9 1.7-4.9 1.7L12 16.4l-1.7-4.9L5.4 9.8l4.9-1.7L12 3.2z"/><path d="M18.5 15l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7.7-2z"/>',
+ backups:'<ellipse cx="12" cy="6" rx="7" ry="2.8"/><path d="M5 6v12c0 1.6 3.1 2.8 7 2.8s7-1.2 7-2.8V6M5 12c0 1.6 3.1 2.8 7 2.8s7-1.2 7-2.8"/>',
+ settings:'<circle cx="12" cy="12" r="3"/><path d="M12 2.5v2.6M12 18.9v2.6M21.5 12h-2.6M5.1 12H2.5M18.7 5.3l-1.8 1.8M7.1 16.9l-1.8 1.8M18.7 18.7l-1.8-1.8M7.1 7.1L5.3 5.3"/>',
+ refresh:'<path d="M20 12a8 8 0 1 1-2.4-5.7M20 4.5V9h-4.5"/>',
+ search:'<circle cx="11" cy="11" r="7"/><path d="M16.2 16.2L21 21"/>',
+ command:'<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h.01M11 10h.01M15 10h.01M17 10h.01M7.5 14h9"/>',
+ warn:'<path d="M12 3.5l8.7 15.5H3.3L12 3.5z"/><path d="M12 10v4.2M12 17h.01"/>',
+ power:'<path d="M12 3v8.5"/><path d="M7.3 6.6a7 7 0 1 0 9.4 0"/>',
+ details:'<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8h.01"/>',
+ shield:'<path d="M12 3l7 3v5c0 4.4-3 7.9-7 9.8-4-1.9-7-5.4-7-9.8V6l7-3z"/>',
+ lock:'<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+ unlock:'<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.5-1.8"/>',
+ camera:'<path d="M4 8.5h3L8.4 6.5h7.2L17 8.5h3a1 1 0 0 1 1 1V18a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.1"/>',
+ disk:'<rect x="3" y="7.5" width="18" height="9" rx="2"/><path d="M7 12h6.5"/><circle cx="17" cy="12" r="1.2" fill="currentColor" stroke="none"/>',
+ netdisk:'<rect x="3" y="4.5" width="18" height="6.5" rx="1.5"/><rect x="3" y="13" width="18" height="6.5" rx="1.5"/><path d="M7 7.7h.01M7 16.2h.01"/>',
+ cloud:'<path d="M7 18a4 4 0 0 1-.5-7.97 5.5 5.5 0 0 1 10.6-1.03A3.75 3.75 0 0 1 17 18H7z"/>',
+ gdrive:'<path fill="#00AC47" stroke="none" d="M8.6 2 1.1 15l3.8 6.4 7.5-13z"/><path fill="#2684FC" stroke="none" d="M15.4 2H8.6l7.5 13h7.6z"/><path fill="#FFBA00" stroke="none" d="M23.5 15h-7.4l-3.7 6.4h7.4z"/>',
+ up:'<path d="M12 20V5.5M6.5 11L12 5.5 17.5 11"/>',
+ check:'<path d="M5 12.5l4.5 4.5L19 7"/>',
+ okcircle:'<circle cx="12" cy="12" r="8.5"/><path d="M8 12.2l2.8 2.8L16 9"/>',
+ xcircle:'<circle cx="12" cy="12" r="8.5"/><path d="M9 9l6 6M15 9l-6 6"/>',
+ star:'<path d="M12 3.5l2.5 5.4 5.9.7-4.4 4 1.2 5.8L12 16.6 6.8 19.4 8 13.6l-4.4-4 5.9-.7L12 3.5z"/>',
+ wrench:'<path d="M14.5 6.2a4 4 0 0 0-5.1 5l-5.6 5.6a1.6 1.6 0 0 0 2.3 2.3l5.6-5.6a4 4 0 0 0 5-5.1l-2.6 2.6-2.2-2.2 2.6-2.6z"/>',
+ save:'<path d="M5 5h10.5L19 8.5V19a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"/><path d="M8 5v4.5h6.5V5M8 20v-5h8v5"/>'
+};
+function ic(n,cls){return `<svg class="ic ${cls||''}" viewBox="0 0 24 24" aria-hidden="true">${ICON[n]||''}</svg>`;}
+const CAT_ICON={Media:'media',Browsers:'network',AI:'ai',Communication:'ai',Security:'shield',Backup:'backups',Utilities:'settings',Gaming:'play',Remote:'monitor'};
+function catIcon(c){return ic(CAT_ICON[c]||'install');}
+function renderIcons(root){(root||document).querySelectorAll('[data-ic]').forEach(e=>{const w=document.createElement('span');w.innerHTML=ic(e.dataset.ic,e.getAttribute('class')||'');const svg=w.firstChild;if(e.getAttribute('class'))svg.setAttribute('class',svg.getAttribute('class'));e.replaceWith(svg);});}
+let TOKEN=localStorage.getItem('brainToken')||'', DEVS=[], CATALOG={apps:[],bundles:[]}, HEALTH={}, VIEW='fleet', selTarget=localStorage.getItem('target')||'';
+let showNet=localStorage.getItem('showNet')==='1';   // default OFF: hide network-mapped drives (they duplicate other PCs' disks)
+const isMobile=()=>window.matchMedia('(max-width:820px)').matches;
+let SELF_AGENT='';  // which PC this browser is running on (from the local launcher) - can't remote INTO yourself
+function toggleNet(){showNet=!showNet;localStorage.setItem('showNet',showNet?'1':'0');if(VIEW==='fleet')renderFleet();else if(VIEW.startsWith('pc:'))renderPC(VIEW.slice(3));}
+// Cloud mounts (Google Drive, OneDrive, Dropbox, Jottacloud… via RaiDrive/rclone)
+// are network-type but NOT the redundant PC-share duplicates — always show them.
+function isCloud(d){return !!(d.network && /raidrive|google\s*drive|onedrive|dropbox|jotta|mega|pcloud|icloud|\bbox\b|\bgdrive\b/i.test(d.source||''));}
+function cloudName(d){return (String(d.source||'').split('\\').filter(Boolean).pop()||'Cloud').trim();}
+function localDrives(list){return (list||[]).filter(d=>showNet||!d.network||isCloud(d));}
+function tAgo(iso){try{const s=(Date.now()-new Date(iso).getTime())/1000;if(s<90)return Math.round(s)+'s ago';if(s<5400)return Math.round(s/60)+'m ago';if(s<129600)return Math.round(s/3600)+'h ago';return Math.round(s/86400)+'d ago';}catch(e){return '?'}}
+function fmtUp(sec){const d=Math.floor(sec/86400),h=Math.floor(sec%86400/3600),m=Math.floor((sec%3600)/60);return (d?d+'d ':'')+(h?h+'h ':'')+m+'m';}
+function toast(m,err){const d=document.createElement('div');if(err)d.className='err';d.textContent=m;$('#toast').appendChild(d);setTimeout(()=>{d.style.opacity=0;setTimeout(()=>d.remove(),300)},3400);}
+function pct(p){return p>=90?'hot':p>=75?'warn':''}
+function NM(x){return (x&&(x.nick||x.host))||''}  // friendly display name, falls back to hostname
+function NMA(a){const d=DEVS.find(x=>x.agent===a);return d?NM(d):(a||'')}   // same, by agent id
+function NMH(h){const d=DEVS.find(x=>x.host===h);return d?NM(d):(h||'')}    // same, by hostname
+function tb(gb){gb=gb||0;return gb>=1024?(gb/1024).toFixed(gb>=10240?0:1)+'TB':gb+'GB'}
+async function tokenWorks(){ try{const r=await fetch('/devices',{headers:TOKEN?{'X-Brain-Token':TOKEN}:{}}); return r.status===200; }catch(e){ return false; } }
+function showLogin(){ return new Promise(async resolve=>{
+  let st={passwordSet:true}; try{ st=await (await fetch('/auth/status')).json(); }catch(e){}
+  const creating=!st.passwordSet;
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(3,6,12,.94);display:flex;align-items:center;justify-content:center;z-index:200';
+  ov.innerHTML=`<div class="card" style="width:344px;max-width:92vw;text-align:center">
+    <div style="font-size:40px;line-height:1;color:var(--acc)">${ic('hub')}</div><h2 style="margin:6px 0 2px">${creating?'Protect your dashboard':'Home Brain'}</h2>
+    <p style="color:var(--mut);font-size:13px">${creating?"Create a password. You'll use it to open the dashboard from any of your PCs.":'Enter your dashboard password.'}</p>
+    <input id="lpw" type="password" placeholder="${creating?'New password':'Password'}" style="width:100%;text-align:center;font-size:15px">
+    ${creating?'<input id="lpw2" type="password" placeholder="Confirm password" style="width:100%;text-align:center;font-size:15px;margin-top:8px">':''}
+    <div id="lerr" style="color:var(--bad);font-size:12px;min-height:16px;margin:6px 0"></div>
+    <div class="btn p" id="lgo" style="width:100%;justify-content:center">${creating?'Create & open':'Open dashboard'}</div></div>`;
+  document.body.appendChild(ov);
+  const pw=ov.querySelector('#lpw'), err=ov.querySelector('#lerr'); setTimeout(()=>pw.focus(),50);
+  async function submit(){
+    const val=pw.value;
+    if(creating){ const v2=ov.querySelector('#lpw2').value; if(val.length<3){err.textContent='At least 3 characters.';return;} if(val!==v2){err.textContent="Passwords don't match.";return;} }
+    err.textContent='…';
+    try{ const r=await fetch(creating?'/auth/set':'/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:val})}); const j=await r.json();
+      if(j.ok&&j.token){ TOKEN=j.token; localStorage.setItem('brainToken',TOKEN); ov.remove(); resolve(true); }
+      else err.textContent=creating?'Could not set password.':'Wrong password.';
+    }catch(e){ err.textContent='Connection problem.'; }
+  }
+  ov.querySelector('#lgo').onclick=submit;
+  ov.querySelectorAll('input').forEach(i=>i.onkeydown=e=>{if(e.key==='Enter')submit();});
+});}
+async function boot(){
+  try{const t=await (await fetch('/token')).json(); if(t.token)TOKEN=t.token;}catch(e){}
+  if(!TOKEN) TOKEN=localStorage.getItem('brainToken')||'';
+  if(!(await tokenWorks())) await showLogin();
+  localStorage.setItem('brainToken',TOKEN);
+  renderIcons();
+  try{const w=await fetch('http://localhost:8799/whoami',{cache:'no-store'}).then(r=>r.json());SELF_AGENT=(w.agent||'').toLowerCase();}catch(e){}
+  CATALOG=await api('/catalog');
+  try{HEALTH=await api('/health');}catch(e){}
+  document.querySelectorAll('.nav[data-v],.bitem[data-v]').forEach(n=>n.onclick=()=>go(n.dataset.v));
+  if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});
+  window.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='k'){e.preventDefault();palette();}if(e.key==='Escape'){$('#kbd').classList.remove('on');toggleAI(false);}});
+  $('#target').onchange=e=>{selTarget=e.target.value;localStorage.setItem('target',selTarget);};
+  $('#kin').oninput=drawPalette; $('#kin').onkeydown=paletteKey;
+  await refresh(); go('fleet'); drawChat(); drawAttach();
+  // Live push via SSE; fall back to slow polling if it drops.
+  // ?nolive disables the stream (used for clean screenshots / static viewing).
+  if(location.search.includes('nolive')){ setInterval(refresh,5000); }
+  else try{
+    const es=new EventSource('/events'+(TOKEN?('?token='+encodeURIComponent(TOKEN)):''));
+    es.onmessage=e=>{try{const d=JSON.parse(e.data);DEVS=d.devices||[];onLive();}catch(_){}};
+    es.onerror=()=>{es.close();setInterval(refresh,4000);};
+  }catch(e){setInterval(refresh,4000);}
+}
+function onLive(){
+  $('#onlineCount').textContent=DEVS.filter(x=>x.online).length;
+  const sig=DEVS.map(x=>x.agent+(x.online?'1':'0')).join(',');
+  if(sig!==window._navsig){window._navsig=sig;
+    $('#navpcs').innerHTML=DEVS.map(x=>`<div class="nav" onclick="go('pc:${x.agent}')"><span class="dot ${x.online?'on':'off'}"></span><span>${NM(x)}</span></div>`).join('');
+    const tgt=$('#target'),cur=tgt.value;tgt.innerHTML=DEVS.map(x=>`<option value="${x.agent}">${NM(x)}</option>`).join('');if(DEVS.find(x=>x.agent===cur))tgt.value=cur;}
+  // Only the fleet view auto-refreshes on the live tick; detail/settings/chat
+  // views keep their state (scan output, scroll, inputs) until you navigate.
+  // Gate on a coarse signature so we don't thrash the DOM on 1% CPU jitter.
+  if(VIEW==='fleet'){
+    // Re-render only on meaningful change (PC online/offline, VPN flip, set change).
+    // CPU/MEM bars then update in place below — no full-DOM churn.
+    const fsig=DEVS.map(x=>x.agent+(x.online?1:0)+((x.stats||{}).pia||'')+'v'+((x.stats||{}).ver||'')).join('|')+'@'+(HEALTH.agentVersion||'');
+    if(fsig!==window._fsig){window._fsig=fsig;renderFleet();}
+    else updateMeters();
+  }
+}
+// Update just the CPU/MEM bar widths + numbers in place (no re-render, no flicker).
+function updateMeters(){
+  DEVS.forEach(x=>{const s=x.stats||{};
+    const c=document.querySelector(`[data-cpu="${x.agent}"]`), m=document.querySelector(`[data-mem="${x.agent}"]`);
+    if(c){c.style.width=(s.cpu||0)+'%';c.className='';c.classList.add(pct(s.cpu));const t=c.closest('.meter').querySelector('.cv');if(t)t.textContent=(s.cpu??'—')+'%';}
+    if(m){m.style.width=(s.mem||0)+'%';m.className='';m.classList.add(pct(s.mem));const t=m.closest('.meter').querySelector('.mv');if(t)t.textContent=(s.mem??'—')+'%';}
+  });
+}
+async function refresh(){
+  const d=await api('/devices'); DEVS=(d.devices||[]);
+  $('#onlineCount').textContent=DEVS.filter(x=>x.online).length;
+  const tgt=$('#target'); const cur=selTarget||tgt.value;
+  tgt.innerHTML=DEVS.map(x=>`<option value="${x.agent}">${NM(x)}</option>`).join('');
+  if(DEVS.find(x=>x.agent===cur))tgt.value=cur; selTarget=tgt.value;
+  $('#navpcs').innerHTML=DEVS.map(x=>`<div class="nav" onclick="go('pc:${x.agent}')"><span class="dot ${x.online?'on':'off'}"></span><span>${NM(x)}</span></div>`).join('');
+  if(VIEW==='fleet')renderFleet(); else if(VIEW.startsWith('pc:'))renderPC(VIEW.slice(3));
+}
+function go(v){
+  if(v==='ai'){toggleAI(true);return;}   // AI chat is a persistent right panel, not a page
+  VIEW=v;document.querySelectorAll('.nav,.bitem').forEach(n=>n.classList.toggle('on',n.dataset&&n.dataset.v===v));
+  const T={fleet:'Fleet',install:'Install apps',media:'Media / Plex',ytgrabber:'YT Grabber',deerflow:'DeerFlow',files:'Files',drive:'Google Drive',network:'Network',ai:'AI chat',backups:'Backups',settings:'Settings'};
+  const gwTitle='<span class="gw"><i style="color:#4285F4">G</i><i style="color:#EA4335">o</i><i style="color:#FBBC05">o</i><i style="color:#4285F4">g</i><i style="color:#34A853">l</i><i style="color:#EA4335">e</i> <i style="color:#4285F4">D</i><i style="color:#EA4335">r</i><i style="color:#FBBC05">i</i><i style="color:#4285F4">v</i><i style="color:#34A853">e</i></span>';
+  $('#title').innerHTML=v.startsWith('pc:')?esc(NM(DEVS.find(d=>d.agent===v.slice(3)))||v):(v==='drive'?gwTitle:esc(T[v]||v));
+  ({fleet:renderFleet,install:renderInstall,media:renderMedia,ytgrabber:renderYTG,deerflow:renderDeerFlow,files:renderFiles,drive:renderDrive,network:renderNetwork,ai:renderAI,backups:renderBackups,settings:renderSettings}[v]||(()=>{}))();
+  if(v.startsWith('pc:'))renderPC(v.slice(3));
+}
+// YT Grabber runs on this server (loopback) and is reverse-proxied by the brain
+// at /ytgrabber, so it lives inside the dashboard on this one port — reachable
+// from every PC + phone over Tailscale with no separate :5117 exposed.
+function renderYTG(){
+  $('#view').innerHTML=`<iframe src="/ytgrabber" title="YT Grabber" allow="clipboard-write; fullscreen"
+    style="width:100%;height:calc(100vh - 96px);min-height:520px;border:1px solid var(--line);border-radius:14px;background:#0b0f17;box-shadow:var(--shadow)"></iframe>`;
+}
+// DeerFlow 2.0 (deep-research SuperAgent) runs in Docker on PlexServer with its
+// own nginx at :2026. It's a full Next.js app (/_next, /api …) so it can't be
+// subpath-proxied through the brain like YT Grabber — the tab embeds :2026 on
+// the same host, reachable fleet-wide over Tailscale.
+function renderDeerFlow(){
+  $('#view').innerHTML=`<iframe src="http://${location.hostname}:2026" title="DeerFlow" allow="clipboard-write; fullscreen"
+    style="width:100%;height:calc(100vh - 96px);min-height:520px;border:1px solid var(--line);border-radius:14px;background:#0b0f17;box-shadow:var(--shadow)"></iframe>`;
+}
+/* ---------- Fleet ---------- */
+function pcCard(x){
+  const s=x.stats||{}, pia=s.pia||'—';
+  const pcls=pia==='Connected'?'on':(pia==='Disconnected'?'off':'na');
+  const ip=s.lanip||(x.ip&&x.ip!=='127.0.0.1'?x.ip:'')||'';
+  const isPlex=(x.host||'').toUpperCase().includes('PLEX')||ip==='192.168.1.174';
+  const off=!x.online;
+  return `<div class="card pc ${x.online?'on':'off'}">
+    <div class="pchead"><span class="ring ${x.online?'on':''}"></span>
+      <div><div class="pcname">${NM(x)}</div><div class="pcsub">${ip||x.ip||''}${x.ts_ip?' · ts '+x.ts_ip:''}${s.uptime?' · up '+s.uptime:''}${x.online?(s.ver?((HEALTH.agentVersion&&s.ver!==HEALTH.agentVersion)?` · <span style="color:var(--warn)">agent v${s.ver} · updating</span>`:' · agent v'+s.ver):' · <span style="color:var(--warn)">agent updating…</span>'):''}</div></div>
+      <span class="pill ${x.online?'on':'off'}">${x.online?'ONLINE':'OFFLINE'}</span></div>
+    <div class="mrow">
+      <div class="meter"><div class="lab"><span>CPU</span><span class="cv">${s.cpu??'—'}%</span></div><div class="bar"><i data-cpu="${x.agent}" class="${pct(s.cpu)}" style="width:${s.cpu||0}%"></i></div></div>
+      <div class="meter"><div class="lab"><span>MEM</span><span class="mv">${s.mem??'—'}%</span></div><div class="bar"><i data-mem="${x.agent}" class="${pct(s.mem)}" style="width:${s.mem||0}%"></i></div></div>
+    </div>
+    <svg class="spark" data-spark="${x.agent}" preserveAspectRatio="none" title="CPU, last 24h"></svg>
+    <div class="piarow"><span class="viadot ${pcls}"></span>VPN: <b>${pia}</b>
+      <div style="margin-left:auto" class="row"><div class="cbtn ${off?'dis':''}" onclick="pia('${x.agent}','on')">On</div><div class="cbtn ${off?'dis':''}" onclick="pia('${x.agent}','off')">Off</div></div></div>
+    <div class="cardbtns">
+      <div class="cbtn deskonly" onclick="parsecTo('${x.parsec||''}','${esc(NM(x))}')">${ic('play')} Parsec</div>
+      <div class="cbtn deskonly ${(off||!ip)?'dis':''}" onclick="openShare('${ip}')">${ic('files')} Files</div>
+      <div class="cbtn ${off?'':'dis'}" onclick="wake('${x.agent}')">${ic('power')} Wake</div>
+      ${isPlex&&ip?`<div class="cbtn" onclick="window.open('http://${ip}:32400/web','_blank')">${ic('media')} Plex</div>`:''}
+      <div class="cbtn go ${off?'dis':''}" onclick="selTarget='${x.agent}';$('#target').value='${x.agent}';go('install')">${ic('install')} Install</div>
+      <div class="cbtn" onclick="go('pc:${x.agent}')">${ic('details')} Details</div>
+      <div class="cbtn warn ${off?'dis':''}" onclick="powerMenu(event,'${x.agent}')">${ic('power')} Power</div>
+    </div></div>`;
+}
+function driveCard(agent,d){
+  const cloud=isCloud(d);
+  const label=cloud?('Cloud — '+cloudName(d)+' ('+d.letter+':)'):((d.network?'Network Drive':'Local Disk')+' ('+d.letter+':)');
+  // Tapping opens the folder on THAT PC's screen (a desktop convenience). Pointless
+  // from a phone, so drives are info-only on mobile.
+  const clickable=!isMobile();
+  return `<div class="dcard" ${clickable?`onclick="openDrive('${agent}','${d.letter}')" title="Open ${d.letter}: on this PC's screen" style="cursor:pointer"`:'style="cursor:default"'}>
+    <div class="dicon">${cloud?ic('cloud'):(d.network?ic('netdisk'):ic('disk'))}</div>
+    <div class="dbody"><div class="dt">${label}</div>
+      ${d.network&&d.source?`<div class="dsrc">${esc(d.source)}</div>`:''}
+      <div class="track"><i class="${pct(d.usedPct)}" style="width:${d.usedPct}%"></i></div>
+      <div class="dfree">${tb(d.freeGB)} free of ${tb(d.totalGB)} · ${d.usedPct}%<span class="fc" data-fc="${agent}:${d.letter}"></span></div></div></div>`;
+}
+/* HomeShare is ONE folder synced live to every PC (Syncthing). So: a single drop
+   zone (lands in C:\HomeShare on an always-on PC, then propagates everywhere) plus
+   a panel showing which machines it's mirrored to. */
+function hsTarget(){
+  // Prefer the always-on brain host, else any online PC. Sync fans it out from there.
+  return (DEVS.find(d=>d.online&&/plex/i.test(d.agent+' '+(d.host||'')))
+        ||DEVS.find(d=>d.online)||DEVS[0]||{}).agent||'';
+}
+function hsSection(){
+  const target=hsTarget();
+  const pcs=DEVS.map(d=>`<div class="hspc"><span class="sdot ${d.online?'on':'off'}"></span>${esc(NM(d))}<span class="hspc-s">${d.online?'synced':'offline'}</span></div>`).join('');
+  return `<div class="hswrap">
+    <div class="hszone" ${target?'':'style="opacity:.5;pointer-events:none"'}
+      ondragover="event.preventDefault();this.classList.add('hot')" ondragleave="this.classList.remove('hot')"
+      ondrop="hsDrop(event,'${target}',false)" onclick="hsPick('${target}',false)">
+      <div class="hsic">${ic('files')}</div>
+      <div><div class="hz-t">Drop a file → HomeShare</div>
+        <div class="hz-d">One shared folder, mirrored live to every PC. Drop here or click — it lands everywhere.</div>
+        <div class="hsst" id="hs_${target}"></div></div>
+    </div>
+    <div class="hspanel"><div class="hp-h">Synced across</div>${pcs}</div>
+  </div>`;
+}
+async function hsDrop(ev,agent,ph){ev.preventDefault();ev.currentTarget.classList.remove('hot');
+  if(ph){toast("My WorkComputer isn't enrolled yet — this box lights up when it joins",true);return;}
+  const dev=DEVS.find(d=>d.agent===agent)||{};
+  if(!dev.online){toast(NMA(agent)+' is offline right now',true);return;}
+  // Internal drag (from the Drive browser) → transfer; OS files → upload.
+  if(DRAG){const drag=DRAG;fsDragEnd();
+    if(drag.dir){toast('Folders can’t be sent between PCs yet',true);return;}
+    hsStatus(agent,'Sending '+drag.name+'…');
+    if(drag.agent===agent){
+      const r=await fsop({agent,op:'copy',src:drag.path,dst:'C:\\HomeShare\\'+drag.name});
+      hsStatus(agent,r.ok?('✓ '+drag.name):'failed');toast(r.ok?(drag.name+' → HomeShare'):('Failed: '+(r.error||'')),!r.ok);return;}
+    const r=await api('/transfer',{method:'POST',body:JSON.stringify({from:drag.agent,src:drag.path,to:agent,toHost:dev.host,dest:'C:\\HomeShare'})});
+    if(!r.ok){hsStatus(agent,'failed');toast('Transfer failed to start',true);return;}
+    const j=await waitJob(r.id,300000);const done=j&&j.result&&j.result.ok;
+    hsStatus(agent,done?('✓ '+drag.name):'failed');
+    toast(done?(drag.name+' → HomeShare on '+NMA(agent)):'Transfer failed',!done);return;}
+  const files=[...((ev.dataTransfer||{}).files||[])];
+  if(!files.length)return;
+  for(const f of files)await hsUpload(agent,f);
+}
+async function hsUpload(agent,f){hsStatus(agent,'Uploading '+f.name+'…');
+  const u='/upload?name='+encodeURIComponent(f.name)+'&agent='+encodeURIComponent(agent)+'&path='+encodeURIComponent('C:\\HomeShare');
+  try{const r=await fetch(u,{method:'POST',headers:TOKEN?{'X-Brain-Token':TOKEN}:{},body:f});const j=await r.json();
+    hsStatus(agent,j.ok?('✓ '+f.name):'failed');
+    toast(j.ok?(f.name+' → HomeShare on '+NMA(agent)):'Upload failed',!j.ok);}
+  catch(e){hsStatus(agent,'failed');toast('Upload failed',true);}}
+function hsStatus(agent,t){const el=$('#hs_'+agent);if(el)el.textContent=t;}
+function hsPick(agent,ph){if(ph){toast("My WorkComputer isn't enrolled yet — connect it (Tailscale) and it lights up here",true);return;}
+  const dev=DEVS.find(d=>d.agent===agent)||{};
+  if(!dev.online){toast(NMA(agent)+' is offline right now',true);return;}
+  const inp=document.createElement('input');inp.type='file';inp.multiple=true;
+  inp.onchange=async()=>{for(const f of inp.files)await hsUpload(agent,f);};
+  inp.click();}
+function renderFleet(){
+  const tgtAgent=selTarget||$('#target').value;
+  const tgt=DEVS.find(d=>d.agent===tgtAgent)||DEVS.find(d=>d.online)||DEVS[0];
+  const allDrives=((tgt&&tgt.stats&&tgt.stats.drives)||[]);
+  const netCount=allDrives.filter(d=>d.network&&!isCloud(d)).length;
+  const drives=localDrives(allDrives).slice().sort((a,b)=>b.usedPct-a.usedPct);
+  const alerts=[];
+  DEVS.forEach(d=>{ if(!d.online)alerts.push({c:'warn',t:NM(d)+' is offline'});
+    ((d.stats&&d.stats.drives)||[]).forEach(dr=>{ if(dr.usedPct>=90&&!dr.network)alerts.push({c:'bad',t:`${NM(d)} — ${dr.letter}: is ${dr.usedPct}% full (${tb(dr.freeGB)} left)`}); }); });
+  const quick=`<div class="quick"><div class="card" style="padding:6px 14px">
+    ${DEVS.map(d=>{const s=d.stats||{};const pia=s.pia||'—';const vpnOn=pia==='Connected';
+      return `<div class="row" style="justify-content:space-between;padding:8px 0;border-top:1px solid rgba(255,255,255,.05);flex-wrap:nowrap">
+      <span style="font-weight:640;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" onclick="go('pc:${d.agent}')">${NM(d)}</span>
+      <span class="row" style="gap:7px;flex-wrap:nowrap">
+        <span class="pill ${d.online?'on':'off'}" style="position:static;margin:0">${d.online?'ON':'OFF'}</span>
+        ${d.online
+          ?`<span class="cbtn" onclick="pia('${d.agent}','${vpnOn?'off':'on'}')">${vpnOn?ic('lock')+' VPN':ic('unlock')+' VPN'}</span>
+            <span class="cbtn" onclick="selTarget='${d.agent}';$('#target').value='${d.agent}';go('media')">${ic('play')} Play</span>`
+          :`<span class="cbtn" onclick="wake('${d.agent}')">${ic('power')} Wake</span>`}
+      </span></div>`}).join('')}
+  </div></div>`;
+  $('#view').innerHTML=`
+    ${quick}
+    ${alerts.map(a=>`<div class="alert ${a.c}">${ic('warn')} ${a.t}</div>`).join('')}
+    <div class="h2">Computers<span class="ln"></span></div>
+    <div class="grid cards">${DEVS.map(pcCard).join('')||'<div class="card">No PCs enrolled yet.</div>'}</div>
+    <div class="h2">HomeShare<span class="ln"></span></div>
+    ${hsSection()}
+    <div class="h2">Drives on ${tgt?NM(tgt):'—'}<span class="ln"></span>
+      ${netCount?`<span class="chip" style="cursor:pointer" onclick="toggleNet()">${showNet?ic('check'):''} ${showNet?'Hide':'Show'} ${netCount} network</span>`:''}
+      ${DEVS.length>1?`<select onchange="selTarget=this.value;$('#target').value=this.value;renderFleet()" style="padding:4px 8px">${DEVS.map(d=>`<option value="${d.agent}" ${tgt&&d.agent===tgt.agent?'selected':''}>${NM(d)}</option>`).join('')}</select>`:''}</div>
+    <div class="drivegrid">${drives.map(d=>driveCard(tgt.agent,d)).join('')||'<div class="empty">No local drives on this PC.</div>'}</div>`;
+  loadSparks();loadForecasts();
+}
+/* 24h CPU sparkline per PC + "full in ~Nd" forecasts (lazy, 5-min cache) */
+let SPARK={},FC={at:0,data:null};
+async function loadSparks(){for(const d of DEVS){try{
+  const c=SPARK[d.agent],now=Date.now();let h;
+  if(c&&now-c.at<300000)h=c.h;else{h=(await api('/history?agent='+encodeURIComponent(d.agent)+'&hours=24')).samples||[];SPARK[d.agent]={at:now,h};}
+  const el=document.querySelector(`[data-spark="${d.agent}"]`);if(!el)continue;
+  if(h.length<2){el.style.display='none';continue}
+  el.style.display='block';
+  const w=280,ht=24;el.setAttribute('viewBox',`0 0 ${w} ${ht}`);
+  const pts=h.map((s,i)=>((i/(h.length-1))*w).toFixed(1)+','+(ht-2-(Math.min(100,s.cpu||0)/100)*(ht-4)).toFixed(1)).join(' ');
+  el.innerHTML=`<polyline points="${pts}" fill="none" stroke="var(--acc)" stroke-width="1.4"/>`;
+}catch(e){}}}
+async function loadForecasts(){try{
+  const now=Date.now();
+  if(!FC.data||now-FC.at>300000){FC={at:now,data:(await api('/forecasts')).forecasts||{}};}
+  document.querySelectorAll('[data-fc]').forEach(el=>{const [a,l]=el.dataset.fc.split(':');
+    const d=(FC.data[a]||{})[l];el.textContent=d!=null?` · full in ~${Math.round(d)}d`:'';});
+}catch(e){}}
+// Try the local launcher (runs on the PC you're sitting at); returns true if it handled it.
+async function localLaunch(app,params){ try{ const q=new URLSearchParams(Object.assign({app},params)).toString();
+  const r=await fetch('http://localhost:8799/launch?'+q,{cache:'no-store'}); const j=await r.json(); return j&&j.ok; }catch(e){ return false; } }
+function rdpTo(ip){ if(!ip)return; localLaunch('rdp',{ip}).then(ok=>{ if(ok){ toast('Opening Remote Desktop to '+ip); return; }
+  const rdp='full address:s:'+ip+'\r\nprompt for credentials:i:1\r\nscreen mode id:i:2\r\n';
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([rdp],{type:'application/x-rdp'})); a.download=ip+'.rdp'; a.click(); toast('Remote Desktop file for '+ip+' — click it to connect'); }); }
+function openShare(ip){ if(!ip)return; localLaunch('files',{ip}).then(ok=>{ if(ok){ toast('Opening files on '+ip); return; }
+  const p='\\\\'+ip; if(navigator.clipboard)navigator.clipboard.writeText(p); toast('Copied '+p+' — paste into Explorer to open its files'); }); }
+function parsecTo(peer,name){
+  // Parsec blocks reliable auto-connect from outside its app, so just open it
+  // cleanly (via the local launcher = no browser popup) and let you click Connect.
+  localLaunch('parsec',{}).then(ok=>{ toast('Opening Parsec — click Connect on '+(name||'the PC you want')); }); }
+async function wake(agent){ const r=await api('/wol',{method:'POST',body:JSON.stringify({agent})}); toast(r.ok?'Wake signal sent':(r.error||'Wake failed'),!r.ok); }
+function powerMenu(e,agent){ e.stopPropagation(); closeMenus(); const m=document.createElement('div'); m.className='popmenu';
+  m.innerHTML=`<button onclick="power('${agent}','sleep');closeMenus()">Sleep</button><button onclick="power('${agent}','restart');closeMenus()">Restart</button><button class="danger" onclick="power('${agent}','shutdown');closeMenus()">Shut down</button>`;
+  document.body.appendChild(m); const r=e.target.getBoundingClientRect(); m.style.left=Math.min(r.left,innerWidth-150)+'px'; m.style.top=(r.bottom+4)+'px'; }
+function closeMenus(){ document.querySelectorAll('.popmenu').forEach(m=>m.remove()); }
+document.addEventListener('click',e=>{ if(!e.target.closest('.popmenu')&&!(e.target.getAttribute&&(e.target.getAttribute('onclick')||'').includes('powerMenu')))closeMenus(); });
+async function renamePC(agent){const cur=DEVS.find(d=>d.agent===agent)||{};
+  const name=prompt('Friendly name for this PC (leave blank to reset to '+(cur.host||agent)+'):', cur.nick||'');
+  if(name===null)return;
+  await api('/device/name',{method:'POST',body:JSON.stringify({agent,name:name.trim()})});
+  if(cur)cur.nick=name.trim();
+  toast(name.trim()?('Renamed to '+name.trim()):'Name reset');await refresh();if(VIEW==='pc:'+agent)renderPC(agent);}
+function pins(a){try{return JSON.parse(localStorage.getItem('pins:'+a)||'[]')}catch(e){return[]}}
+function togglePin(a,l){const p=pins(a);const i=p.indexOf(l);if(i<0)p.push(l);else p.splice(i,1);localStorage.setItem('pins:'+a,JSON.stringify(p));renderPC(a);}
+let showAllDrives={};
+function drvRow(a,d,pinned){return `<div class="drv"><span onclick="togglePin('${a}','${d.letter}')" title="Pin" style="cursor:pointer;color:${pinned?'var(--warn)':'var(--dim)'}">${ic('star',pinned?'fill':'')}</span><span class="dl">${d.letter}:</span><div class="db"><div class="bar"><i class="${pct(d.usedPct)}" style="width:${d.usedPct}%"></i></div></div><span class="dn">${tb(d.freeGB)} / ${tb(d.totalGB)} · ${d.usedPct}%</span> <span class="btn sm" onclick="openDrive('${a}','${d.letter}')">Open</span></div>`;}
+function detailHeader(x){const s=x.stats||{};const pia=s.pia||'—';const pcls=pia==='Connected'?'on':(pia==='Disconnected'?'off':'na');
+  return `<div class="pchead"><span class="ring ${x.online?'on':''}"></span>
+    <div><div class="pcname">${NM(x)} <span class="pill ${x.online?'on':'off'}" style="margin-left:8px;position:static">${x.online?'ONLINE':'OFFLINE'}</span>
+      <span class="btn sm" style="margin-left:8px" onclick="renamePC('${x.agent}')">Rename</span></div>
+    <div class="pcsub">${x.nick?x.host+' · ':''}${x.ip||''}${x.ts_ip?' · tailscale '+x.ts_ip:''}${s.uptime?' · up '+s.uptime:''}</div></div></div>
+  <div class="mrow">
+    <div class="meter"><div class="lab"><span>CPU</span><span>${s.cpu??'—'}%</span></div><div class="bar"><i class="${pct(s.cpu)}" style="width:${s.cpu||0}%"></i></div></div>
+    <div class="meter"><div class="lab"><span>MEM</span><span>${s.mem??'—'}%</span></div><div class="bar"><i class="${pct(s.mem)}" style="width:${s.mem||0}%"></i></div></div>
+  </div>
+  <div class="piarow"><span class="viadot ${pcls}"></span>VPN (PIA): <b>${pia}</b>
+    <div style="margin-left:auto" class="row"><div class="btn sm" onclick="pia('${x.agent}','on')">VPN On</div><div class="btn sm" onclick="pia('${x.agent}','off')">VPN Off</div>
+    <div class="btn sm" onclick="selTarget='${x.agent}';$('#target').value='${x.agent}';go('install')">Install apps</div></div></div>`;}
+function renderPC(a){const x=DEVS.find(d=>d.agent===a);if(!x)return;const s=x.stats||{};
+  const allRaw=(s.drives||[]);const netCount=allRaw.filter(d=>d.network&&!isCloud(d)).length;
+  const P=pins(a);const all=localDrives(allRaw).slice().sort((p,q)=>q.usedPct-p.usedPct);
+  const pinned=all.filter(d=>P.includes(d.letter));const rest=all.filter(d=>!P.includes(d.letter));
+  const showAll=showAllDrives[a];
+  let toShow,note='';
+  if(P.length){ toShow=showAll?[...pinned,...rest]:pinned; if(!showAll&&rest.length)note=`${rest.length} more drives hidden — pin what you care about, or Show all.`; }
+  else { toShow=showAll?all:all.slice(0,6); if(!showAll&&all.length>6)note=`${all.length-6} more — Show all.`; }
+  $('#view').innerHTML=`<div class="grid cards" style="grid-template-columns:1fr">
+    <div class="card">${detailHeader(x)}
+      <div class="h2">Drives ${P.length?'· pinned first':''}<span class="ln"></span>
+        ${netCount?`<span class="chip" style="cursor:pointer" onclick="toggleNet()">${showNet?ic('check'):''} ${showNet?'Hide':'Show'} ${netCount} network</span>`:''}
+        ${all.length>6?`<span class="btn sm" onclick="showAllDrives['${a}']=${!showAll};renderPC('${a}')">${showAll?'Collapse':('Show all '+all.length)}</span>`:''}</div>
+      ${toShow.map(d=>drvRow(a,d,P.includes(d.letter))).join('')}
+      ${note?`<div class="pcsub" style="padding:8px 0">${note}</div>`:''}
+      ${godSection(a)}
+      <div class="h2">Installed apps<span class="ln"></span><span class="btn sm" onclick="scanApps('${a}','applist')">Scan installed</span><span class="btn sm" onclick="scanApps('${a}','updates')">Check updates</span></div>
+      <pre id="applist" style="max-height:280px;overflow:auto;font-size:11.5px;color:var(--mut);background:rgba(0,0,0,.25);border:1px solid var(--line);border-radius:9px;padding:10px;white-space:pre-wrap">Click "Scan installed" to list this PC's apps.</pre>
+      <div class="h2">Screen<span class="ln"></span></div>
+      <div id="shotbox_${a}"><div class="pcsub">…</div></div>
+      <div class="h2">Power<span class="ln"></span></div>
+      <div class="acts"><div class="btn sm" onclick="power('${a}','sleep')">Sleep</div><div class="btn sm warn" onclick="power('${a}','restart')">Restart</div><div class="btn sm warn" onclick="power('${a}','shutdown')">Shut down</div></div>
+    </div></div>`;
+  loadShot(a);
+}
+// ---- God Mode: per-PC terminal + file browser (agent allowRaw=true fleet-wide) ----
+let _cwd={}, _term={};
+function jsesc(s){return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
+function godSection(a){
+  const cwd=_cwd[a]||'C:\\';
+  return `
+  <div class="h2">Terminal <span class="godwarn">· god mode — runs ANY command on this PC</span><span class="ln"></span></div>
+  <div class="row" style="gap:6px">
+    <select id="tsh_${a}" style="padding:6px 8px"><option value="cmd">cmd</option><option value="ps">PowerShell</option></select>
+    <input id="tin_${a}" placeholder="type a command, Enter to run…" style="flex:1;font-family:Consolas,monospace" onkeydown="if(event.key==='Enter')pcRun('${a}')">
+    <div class="btn sm p" onclick="pcRun('${a}')">Run</div>
+    <div class="btn sm" onclick="_term['${a}']='';$('#tout_${a}').textContent=''">Clear</div>
+  </div>
+  <pre id="tout_${a}" style="max-height:300px;overflow:auto;font-size:12px;font-family:Consolas,monospace;background:#05080f;border:1px solid var(--line);border-radius:9px;padding:10px;white-space:pre-wrap;margin-top:8px">${esc(_term[a]||'')}</pre>
+  <div class="h2">Files <span class="ln"></span></div>
+  <div class="row" style="gap:6px">
+    <div class="btn sm" onclick="pcUp('${a}')">⬆ Up</div>
+    <input id="fpin_${a}" value="${esc(cwd)}" style="flex:1;font-family:Consolas,monospace" onkeydown="if(event.key==='Enter')pcBrowse('${a}',this.value)">
+    <div class="btn sm p" onclick="pcBrowse('${a}',$('#fpin_${a}').value)">Go</div>
+  </div>
+  <div id="fbrowse_${a}" style="max-height:340px;overflow:auto;margin-top:8px;border:1px solid var(--line);border-radius:9px"><div class="pcsub" style="padding:10px">Click <b>Go</b> to browse ${esc(cwd)}</div></div>`;
+}
+async function pcRun(a){
+  const inp=$('#tin_'+a); if(!inp)return; const raw=inp.value.trim(); if(!raw)return;
+  const sh=($('#tsh_'+a)||{}).value||'cmd';
+  const cmd = sh==='ps' ? ('powershell -NoProfile -Command "'+raw.replace(/"/g,'\\"')+'"') : raw;
+  const out=$('#tout_'+a); inp.value='';
+  out.textContent+='> '+raw+'\n'; out.scrollTop=out.scrollHeight;
+  const jb=await runAndWait(a,'run',{cmd},60000); const r=(jb&&jb.result)||{};
+  out.textContent+=(r.stdout||'')+(r.stderr?('[stderr] '+r.stderr+'\n'):'')+(jb?'':'[timed out]\n')+'\n';
+  _term[a]=out.textContent; out.scrollTop=out.scrollHeight;
+}
+async function pcBrowse(a,path){
+  path=(path||'C:\\').trim(); _cwd[a]=path;
+  const box=$('#fbrowse_'+a); const fp=$('#fpin_'+a); if(fp)fp.value=path;
+  if(box)box.innerHTML='<div class="pcsub" style="padding:10px">Listing '+esc(path)+'…</div>';
+  const jb=await runAndWait(a,'listdir',{path},30000); const r=(jb&&jb.result)||{};
+  if(!r.ok){if(box)box.innerHTML='<div class="pcsub" style="padding:10px;color:#fb7185">'+esc(r.stderr||'could not list')+'</div>';return;}
+  let items=[];try{items=JSON.parse(r.stdout||'[]');}catch(e){}
+  if(!Array.isArray(items))items=items?[items]:[];
+  items.sort((x,y)=>(y.dir?1:0)-(x.dir?1:0)||String(x.name).localeCompare(String(y.name)));
+  const base=path.replace(/[\\/]+$/,'');
+  const rows=items.map(it=>{const full=base+'\\'+it.name;const fe=jsesc(full);
+    if(it.dir)return `<div class="fbrow dir" onclick="pcBrowse('${a}','${fe}')"><span class="fbn">📁 ${esc(it.name)}</span><span class="fbmeta">${it.mod||''}</span></div>`;
+    return `<div class="fbrow"><span class="fbn">📄 ${esc(it.name)}</span><span class="fbmeta">${it.sizeMB!=null?it.sizeMB+' MB':''}<span class="fbx" title="View as text" onclick="pcView('${a}','${fe}')">👁</span><span class="fbx" title="Open on that PC's screen" onclick="job('${a}','open',{path:'${fe}'})">↗</span><span class="fbx" title="Delete" onclick="pcDel('${a}','${fe}')">🗑</span></span></div>`;
+  }).join('');
+  if(box)box.innerHTML=rows||'<div class="pcsub" style="padding:10px">(empty folder)</div>';
+}
+function pcUp(a){let p=(_cwd[a]||'C:\\').replace(/[\\/]+$/,'');const i=p.lastIndexOf('\\');p=i>2?p.slice(0,i):p.slice(0,2)+'\\';pcBrowse(a,p);}
+async function pcView(a,full){const out=$('#tout_'+a);if(out)out.textContent+='--- '+full+' ---\n';const jb=await runAndWait(a,'run',{cmd:'type "'+full+'"'},30000);const r=(jb&&jb.result)||{};if(out){out.textContent+=(r.stdout||r.stderr||'(empty)')+'\n\n';_term[a]=out.textContent;out.scrollTop=out.scrollHeight;}}
+async function pcDel(a,full){if(!confirm('Delete on '+a+':\n\n'+full+'\n\nThis cannot be undone.'))return;const jb=await runAndWait(a,'delete',{path:full},20000);const r=(jb&&jb.result)||{};toast(r.ok?'Deleted':(r.stderr||'delete failed'),!r.ok);pcBrowse(a,_cwd[a]);}
+async function loadShot(a){const box=$('#shotbox_'+a);if(!box)return;
+  let m={};try{m=await api('/screenshot?meta=1&agent='+encodeURIComponent(a));}catch(e){}
+  if(!m.optin){box.innerHTML=`<div class="pcsub" style="margin-bottom:8px">Remote screenshots are <b>off</b> for this PC (private by default). Turn them on to capture what's on its screen.</div>
+    <div class="btn sm" onclick="shotOptin('${a}',true)">Enable screenshots on this PC</div>`;return;}
+  box.innerHTML=`<div class="row" style="margin-bottom:8px"><div class="btn sm p" onclick="capture('${a}')">${ic('camera')} Capture now</div>
+    <div class="btn sm warn" onclick="shotOptin('${a}',false)">Turn screenshots off</div>
+    ${m.at?`<span class="pcsub">last: ${tAgo(m.at)}</span>`:'<span class="pcsub">none captured yet</span>'}</div>
+    ${m.hasShot?`<img src="/screenshot?agent=${encodeURIComponent(a)}&t=${Date.now()}" style="max-width:100%;border-radius:10px;border:1px solid var(--line)">`:''}`;}
+async function shotOptin(a,on){if(on&&!confirm('Allow the dashboard to capture screenshots of this PC? You can turn it off anytime.'))return;
+  await api('/screenshot/optin',{method:'POST',body:JSON.stringify({agent:a,on})});toast(on?'Screenshots enabled':'Screenshots disabled');loadShot(a);}
+async function capture(a){const box=$('#shotbox_'+a);const r=await api('/screenshot/capture',{method:'POST',body:JSON.stringify({agent:a})});
+  if(!r.ok){toast(r.error||'Capture failed',true);return;}toast('Capturing…');
+  setTimeout(()=>loadShot(a),3500);}
+async function runAndWait(agent,type,args,timeout=60000){const r=await api('/jobs',{method:'POST',body:JSON.stringify({agent,type,args})});const id=r.id;const end=Date.now()+timeout;
+  while(Date.now()<end){await new Promise(z=>setTimeout(z,1200));const j=await api('/jobs');const job=(j.jobs||[]).find(x=>x.id===id);if(job&&(job.status==='done'||job.status==='error'))return job;}return null;}
+async function scanApps(a,type){const el=$('#applist');if(el)el.textContent='Scanning '+(DEVS.find(d=>d.agent===a)||{}).host+'… (needs the agent online)';
+  const j=await runAndWait(a,type,{});if($('#applist'))$('#applist').textContent=j?((j.result&&j.result.stdout)||j.result&&j.result.stderr||'(no output)'):'Timed out — is the agent online?';}
+/* ---------- actions ---------- */
+async function job(agent,type,args){const r=await api('/jobs',{method:'POST',body:JSON.stringify({agent,type,args})});toast(type+' → '+(DEVS.find(d=>d.agent===agent)||{}).host);return r;}
+async function openDrive(agent,letter){await api('/jobs',{method:'POST',body:JSON.stringify({agent,type:'open',args:{path:letter+':\\\\'}})});toast('Opened '+letter+': on '+(NMA(agent)||agent)+"'s screen");}
+async function pia(agent,action){await job(agent,'pia',{action});setTimeout(refresh,1500);}
+async function vpnAll(on){const list=DEVS.filter(d=>d.online);
+  if(!list.length){toast('No PCs online',true);return;}
+  toast((on?'Connecting':'Disconnecting')+' VPN on '+list.map(d=>NM(d)).join(', ')+'…');
+  await Promise.all(list.map(d=>api('/jobs',{method:'POST',body:JSON.stringify({agent:d.agent,type:'pia',args:{action:on?'on':'off'}})}).catch(()=>{})));
+  setTimeout(refresh,2500);}
+async function power(agent,action){if(action!=='sleep'&&!confirm(action+' '+(DEVS.find(d=>d.agent===agent)||{}).host+'?'))return;await job(agent,'power',{action});}
+async function install(agent,id){await job(agent,'install',{id});toast('Installing '+id+' on '+(DEVS.find(d=>d.agent===agent)||{}).host);}
+/* ---------- Install ---------- */
+function renderInstall(){const t=selTarget||($('#target').value);
+  $('#view').innerHTML=`<div class="h2">Bundles — one click to set up a PC<span class="ln"></span></div>
+    <div class="grid cards">${CATALOG.bundles.map(b=>`<div class="bundle"><div class="bn">${ic('install')} ${b.name}</div><div class="bd">${b.desc||''}</div><div class="bapps">${(b.apps||[]).length} apps</div>
+      <div class="btn p sm" onclick="installBundle('${b.id}')">Install on ${NMA(t)||'…'}</div></div>`).join('')}</div>
+    <div class="h2">All apps<span class="ln"></span></div>
+    <div class="grid cards">${CATALOG.apps.map(a=>`<div class="app-tile"><div class="em">${catIcon(a.category)}</div><div class="an">${a.name}</div><div class="ad">${a.desc||''}</div><div class="btn sm" onclick="install(selTarget||$('#target').value,'${a.id}')">Install</div></div>`).join('')}</div>`;
+}
+async function installBundle(bid){const b=CATALOG.bundles.find(x=>x.id===bid);const agent=selTarget||$('#target').value;
+  if(!confirm(`Install ${b.apps.length} apps (${b.name}) on ${NMA(agent)}?`))return;
+  await api('/bundle',{method:'POST',body:JSON.stringify({agent,apps:b.apps})});toast(`${b.name} → queued ${b.apps.length} installs`);}
+/* ---------- Media ---------- */
+async function renderMedia(){$('#view').innerHTML='<div class="card">Loading media…</div>';
+  const [cfg,claw]=await Promise.all([api('/plex/config'),api('/claw/status')]);
+  const tgt=selTarget||$('#target').value, tgtHost=NMA(tgt)||'…';
+  let html='';
+  // Request box (PlexClaw pipeline)
+  html+=`<div class="card"><h3 style="margin:0 0 4px">Request a movie</h3>
+    <p style="color:var(--mut);font-size:13px">PlexClaw finds it, downloads it, and you get a Telegram ping when it's watchable. Same as texting the bot <code>/request</code>.</p>
+    <div class="row"><input id="reqq" placeholder="Title…" style="flex:1" onkeydown="if(event.key==='Enter')clawRequest()"><input id="reqy" placeholder="Year (optional)" style="width:110px"><div class="btn p" onclick="clawRequest()">Request</div></div>
+    <div id="reqst" style="font-size:12.5px;color:var(--mut);margin-top:8px">${claw.running?((claw.pending||[]).length?('Waiting to land on Plex: '+claw.pending.map(p=>esc(p.title||p.query)).join(', ')):''):'PlexClaw engine is offline on the server — requests and live media info are paused.'}</div></div>`;
+  if(claw.running){
+    // Now playing + continue watching
+    const ses=claw.sessions||[];
+    if(ses.length)html+=`<div class="h2">Now playing<span class="ln"></span></div>`+ses.map(s=>{
+      const pctDone=s.durationSec?Math.round(s.viewOffsetSec/s.durationSec*100):0;
+      return `<div class="card" style="margin-bottom:10px"><div class="row" style="justify-content:space-between">
+        <div><b>${esc(s.title)}</b><div class="pcsub">${esc(s.user)} · ${esc(s.player)} · ${pctDone}% in</div></div>
+        <div class="btn sm" onclick="clawContinue('${s.ratingKey}',${s.viewOffsetSec})">${ic('play')} Continue on ${tgtHost}</div></div>
+        <div class="bar" style="margin-top:8px"><i style="width:${pctDone}%"></i></div></div>`;}).join('');
+    // Active downloads
+    const dls=(claw.downloads||[]).filter(d=>!d.done);
+    if(dls.length)html+=`<div class="h2">Downloading now<span class="ln"></span></div><div class="card">`+dls.map(d=>
+      `<div style="padding:7px 0;border-top:1px solid rgba(255,255,255,.05)"><div class="row" style="justify-content:space-between;font-size:12.5px"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:70%">${esc(d.name)}</span><span class="dn">${d.progress}%${d.etaMin!=null?' · ~'+d.etaMin+'min left':''}</span></div>
+      <div class="bar" style="margin-top:5px"><i style="width:${d.progress}%"></i></div></div>`).join('')+'</div>';
+    // Recently added + watch stats
+    const rec=claw.recent||[], w=claw.watch||{};
+    if(rec.length)html+=`<div class="h2">Recently added<span class="ln"></span></div><div class="card" style="font-size:12.5px">${rec.slice(0,10).map(r=>`<div style="padding:5px 0;border-top:1px solid rgba(255,255,255,.05)">${r.type==='movie'?ic('media'):ic('monitor')} ${esc(r.title)} <span class="dn">${r.year||''}</span></div>`).join('')}</div>`;
+    if(w.library_items)html+=`<div class="h2">Watch stats<span class="ln"></span></div><div class="row" style="margin-bottom:14px">
+      <span class="chip"><b>${w.library_items}</b> items</span><span class="chip"><b>${w.coverage_pct}%</b> ever watched</span>
+      <span class="chip"><b>${w.never_watched}</b> never watched${w.never_watched_gb?` (<b>${w.never_watched_gb}GB</b> reclaimable)`:''}</span>
+      <span class="chip"><b>${w.users}</b> viewers</span></div>`;
+  }
+  // Plex browse (needs the brain's own Plex token)
+  if(cfg.hasToken){
+    const sec=await api('/plex/sections'); const secs=(sec.sections||[]).filter(s=>s.type==='movie'||s.type==='show');
+    html+=`<div class="h2">Browse Plex — play on ${tgtHost}<span class="ln"></span></div>
+      <div class="row"><input id="pq" placeholder="Search Plex…" style="flex:1" onkeydown="if(event.key==='Enter')plexSearch()"><div class="btn" onclick="plexSearch()">Search</div>
+      <select id="psec">${secs.map(s=>`<option value="${s.key}">${s.title}</option>`).join('')}</select><div class="btn" onclick="plexBrowse()">Browse</div></div>
+      <div id="plexres" class="grid cards" style="margin-top:14px;grid-template-columns:repeat(auto-fill,minmax(132px,1fr))"></div>`;
+  } else html+=`<div class="card">Add your Plex token in <b>Settings → Plex</b> to browse the library and play on any PC.</div>`;
+  $('#view').innerHTML=html;
+  if(cfg.hasToken)plexBrowse();
+}
+async function clawRequest(){const q=$('#reqq').value.trim();if(!q)return;const y=$('#reqy').value.trim();
+  $('#reqst').textContent='Searching + grabbing "'+q+'"… (can take ~30s)';
+  const r=await api('/claw/request',{method:'POST',body:JSON.stringify({query:q,year:y})});
+  const s=r.status;
+  $('#reqst').textContent=s==='ok'?`Downloading ${r.title||q} (${r.quality||'?'}, ${r.size_gb||'?'}GB) — Telegram will ping you when it's on Plex`:
+    s==='not_found'?`Nothing found for "${q}" — try adding the year`:
+    s==='no_quality'?`Only bad copies (CAM/TS) available right now — try again in a few weeks`:
+    s==='offline'?'PlexClaw engine is offline on the server':(r.message||s);
+  if(s==='ok'){$('#reqq').value='';$('#reqy').value='';}}
+async function clawContinue(rk,off){const agent=selTarget||$('#target').value;
+  const r=await api('/claw/continue',{method:'POST',body:JSON.stringify({agent,ratingKey:rk,offsetSec:off})});
+  toast(r.ok?('Continuing "'+(r.title||'')+'" on '+(NMA(agent)||agent)):('Failed: '+(r.error||'')),!r.ok);}
+function plexTiles(items){return items.map(m=>`<div class="poster"><img loading="lazy" src="${m.thumb?('/plex/thumb?path='+encodeURIComponent(m.thumb)):''}" onerror="this.style.opacity=.3">
+  <div class="pt" title="${m.title}">${m.title} ${m.year||''}</div>
+  <div class="btn sm" style="margin-top:4px" onclick="plexPlay('${m.ratingKey}')">${ic('play')} Play on ${NMA(selTarget||$('#target').value)||'…'}</div></div>`).join('');}
+async function plexBrowse(){const k=$('#psec').value;const r=await api('/plex/items?section='+k);$('#plexres').innerHTML=plexTiles(r.items||[]);}
+async function plexSearch(){const q=$('#pq').value.trim();if(!q)return;const r=await api('/plex/search?q='+encodeURIComponent(q));$('#plexres').innerHTML=plexTiles(r.items||[]);}
+async function plexPlay(rk){const agent=selTarget||$('#target').value;const r=await api('/plex/play',{method:'POST',body:JSON.stringify({agent,ratingKey:rk})});toast(r.ok?('Playing on '+NMA(agent)):('Play failed: '+(r.error||'')),!r.ok);}
+/* ---------- Files ---------- */
+function renderFiles(){$('#view').innerHTML=`
+  <div class="card"><h3 style="margin:0 0 6px">Find a file across every PC</h3>
+  <p style="color:var(--mut);font-size:13px">Searches all online PCs at once (uses Everything if installed, else the file index).</p>
+  <div class="row"><input id="fsq" placeholder="Filename or part of it…" style="flex:1" onkeydown="if(event.key==='Enter')fleetSearch()"><div class="btn p" onclick="fleetSearch()">Search</div></div>
+  <div id="fsres" style="margin-top:12px"></div></div>
+  <div class="card"><h3 style="margin:0 0 6px">Send a file to a PC</h3>
+  <p style="color:var(--mut);font-size:13px">Drop a file below, pick the destination PC + folder, and it lands there.</p>
+  <div class="field"><label>Destination PC</label><select id="fpc">${DEVS.map(d=>`<option value="${d.agent}">${NM(d)}</option>`).join('')}</select></div>
+  <div class="field"><label>Destination folder on that PC</label><input id="fpath" placeholder="e.g. C:\\Users\\Public\\Downloads"></div>
+  <div id="drop" style="border:2px dashed var(--line2);border-radius:12px;padding:34px;text-align:center;color:var(--mut)">Drop a file here, or click to pick<input id="file" type="file" class="hidden"></div>
+  <div id="upst" style="margin-top:10px;font-size:12px;color:var(--mut)"></div></div>`;
+  const drop=$('#drop'),file=$('#file');
+  drop.onclick=()=>file.click();
+  drop.ondragover=e=>{e.preventDefault();drop.style.borderColor='var(--acc)';};
+  drop.ondragleave=()=>drop.style.borderColor='var(--line2)';
+  drop.ondrop=e=>{e.preventDefault();drop.style.borderColor='var(--line2)';if(e.dataTransfer.files[0])upload(e.dataTransfer.files[0]);};
+  file.onchange=()=>file.files[0]&&upload(file.files[0]);
+}
+async function fleetSearch(){const q=$('#fsq').value.trim();if(q.length<2){toast('Type at least 2 characters',true);return;}
+  $('#fsres').innerHTML='<div class="pcsub">Searching all online PCs…</div>';
+  const r=await api('/search?q='+encodeURIComponent(q));const res=r.results||[];
+  if(!res.length){$('#fsres').innerHTML=`<div class="pcsub">No matches on: ${(r.searched||[]).join(', ')||'no PCs online'}.</div>`;return;}
+  $('#fsres').innerHTML=`<div class="pcsub" style="margin-bottom:8px">${res.length} result${res.length>1?'s':''} across ${(r.searched||[]).length} PC(s)</div>`+
+    res.slice(0,120).map(h=>{const dir=h.path.replace(/[\\\/][^\\\/]*$/,'');return `<div class="drv"><span class="dl" style="width:auto">${esc(NMH(h.host)||NMA(h.agent))}</span>
+      <div class="db" style="min-width:0"><div style="font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(h.name)}</div>
+      <div class="dsrc" style="font-family:Consolas,monospace">${esc(h.path)}</div></div>
+      <span class="btn sm" onclick="job('${h.agent}','open',{path:${JSON.stringify(dir)}})">Open folder</span></div>`;}).join('');}
+async function upload(f){const agent=$('#fpc').value,path=$('#fpath').value.trim();if(!path){toast('Enter a destination folder',true);return;}
+  $('#upst').textContent='Uploading '+f.name+'…';
+  const u='/upload?name='+encodeURIComponent(f.name)+'&agent='+encodeURIComponent(agent)+'&path='+encodeURIComponent(path);
+  const r=await fetch(u,{method:'POST',headers:TOKEN?{'X-Brain-Token':TOKEN}:{},body:f}); const j=await r.json();
+  $('#upst').textContent=j.ok?('Sent to '+(DEVS.find(d=>d.agent===agent)||{}).host+' → '+path):'Upload failed';toast(j.ok?'File sent':'Upload failed',!j.ok);}
+/* ---------- Google Drive / cloud mounts: in-dashboard file browser ---------- */
+let DRV={agent:'',path:''}, FS_ITEMS=[], CLIP=null, CHAT_ATTACH=null;
+async function fsop(body){return await api('/fs',{method:'POST',body:JSON.stringify(body)});}
+function renderDrive(){
+  const clouds=[];DEVS.forEach(x=>(((x.stats||{}).drives)||[]).filter(isCloud).forEach(d=>clouds.push({agent:x.agent,pc:NM(x),d})));
+  $('#view').innerHTML=`
+  <div class="card"><h3 style="margin:0 0 4px"><span class="gw"><i style="color:#4285F4">G</i><i style="color:#EA4335">o</i><i style="color:#FBBC05">o</i><i style="color:#4285F4">g</i><i style="color:#34A853">l</i><i style="color:#EA4335">e</i> <i style="color:#4285F4">D</i><i style="color:#EA4335">r</i><i style="color:#FBBC05">i</i><i style="color:#4285F4">v</i><i style="color:#34A853">e</i></span></h3>
+    <p style="color:var(--mut);font-size:13px">Browse and search your cloud drives right here. Right-click for copy / cut / paste / delete / send to chat — or <b>drag a file onto a folder</b> to move it, or <b>drag it onto a PC</b> in the dock to send it across.</p>
+    <div class="fsbar">
+      ${clouds.map(c=>`<div class="btn sm" onclick="driveGo('${c.agent}',${JSON.stringify(c.d.letter+':\\')})">${ic('gdrive')} ${esc(cloudName(c.d))} (${c.d.letter}:) · ${esc(c.pc)}</div>`).join('')}
+      <div class="btn sm" onclick="window.open('https://drive.google.com','_blank')">${ic('cloud')} Drive on the web</div>
+    </div>
+    <div class="fsbar"><span id="fscrumbs" style="display:flex;gap:5px;align-items:center;flex-wrap:wrap"></span>
+      <input id="fsq2" placeholder="Search this folder + subfolders…" style="flex:1;min-width:160px" onkeydown="if(event.key==='Enter')driveSearch()">
+      <div class="btn sm p" onclick="driveSearch()">Search</div>
+      ${''}<span id="fspaste"></span></div>
+    <div id="fslist" style="max-height:56vh;overflow:auto">${clouds.length?'':'No cloud drives detected. Mount Google Drive with RaiDrive (or rclone) on any PC and it shows up here automatically.'}</div></div>`;
+  if(clouds.length){const keep=clouds.find(c=>c.agent===DRV.agent&&DRV.path);driveGo((keep||clouds[0]).agent,keep?DRV.path:clouds[0].d.letter+':\\');}
+}
+function fsCrumbs(){
+  const parts=DRV.path.replace(/\\+$/,'').split('\\');
+  $('#fscrumbs').innerHTML=parts.map((p,i)=>{const to=parts.slice(0,i+1).join('\\')+(i===0?'\\':'');
+    return `<span class="crumb" onclick="driveGo('${DRV.agent}',${JSON.stringify(to)})">${esc(p||'')}</span>`;}).join('<span class="crumbsep">›</span>')
+    +` <span class="crumbsep">· on ${esc(NMA(DRV.agent))}</span>`;
+  const pasteEl=$('#fspaste');
+  if(pasteEl)pasteEl.innerHTML=CLIP?`<div class="btn sm" onclick="fsPaste()">${ic('save')} Paste ${esc(CLIP.name)}</div>`:'';
+}
+let FS_MEM={};   // agent|path -> items: show instantly on revisit, refresh behind
+async function driveGo(agent,path){
+  DRV={agent,path};const el=$('#fslist');if(!el)return;fsCrumbs();
+  const key=agent+'|'+path.toLowerCase(), mem=FS_MEM[key];
+  if(mem){FS_ITEMS=mem;el.innerHTML=FS_ITEMS.map((x,i)=>fsRow(x,i)).join('')||'<div class="pcsub" style="padding:10px">Empty folder.</div>';}
+  else el.innerHTML='<div class="pcsub" style="padding:10px">Loading '+esc(path)+'…</div>';
+  const r=await fsop({agent,op:'list',path});
+  if(DRV.agent!==agent||DRV.path!==path)return;   // user already navigated elsewhere
+  if(!r.ok){if(!mem)el.innerHTML=`<div class="pcsub" style="padding:10px;color:var(--bad)">${esc(r.error||'failed')}</div>`;return;}
+  FS_ITEMS=(r.items||[]).map(x=>({...x,path:path.replace(/\\+$/,'')+'\\'+x.name}));
+  FS_MEM[key]=FS_ITEMS;
+  el.innerHTML=FS_ITEMS.map((x,i)=>fsRow(x,i)).join('')||'<div class="pcsub" style="padding:10px">Empty folder.</div>';
+}
+async function driveSearch(){
+  const q=$('#fsq2').value.trim();if(q.length<2){toast('Type at least 2 characters',true);return;}
+  const el=$('#fslist');el.innerHTML='<div class="pcsub" style="padding:10px">Searching under '+esc(DRV.path)+'…</div>';
+  const r=await fsop({agent:DRV.agent,op:'search',root:DRV.path,q});
+  if(!r.ok){el.innerHTML=`<div class="pcsub" style="padding:10px;color:var(--bad)">${esc(r.error||'failed')}</div>`;return;}
+  FS_ITEMS=(r.hits||[]).map(h=>({name:h.name,dir:h.dir,path:h.path,sizeMB:null,mod:'',found:true}));
+  el.innerHTML=`<div class="pcsub" style="padding:6px 9px">${FS_ITEMS.length} match${FS_ITEMS.length===1?'':'es'} — <span class="crumb" onclick="driveGo('${DRV.agent}',${JSON.stringify(DRV.path)})">back to folder</span></div>`
+    +(FS_ITEMS.map((x,i)=>fsRow(x,i)).join('')||'<div class="pcsub" style="padding:10px">No matches.</div>');
+}
+function fsRow(x,i){
+  const size=x.dir?'':(x.sizeMB==null?'':(x.sizeMB>=1024?(x.sizeMB/1024).toFixed(2)+' GB':(x.sizeMB>=1?x.sizeMB.toFixed(1)+' MB':Math.max(1,Math.round(x.sizeMB*1024))+' KB')));
+  const isCut=CLIP&&CLIP.op==='move'&&CLIP.path===x.path;
+  return `<div class="fsrow ${x.dir?'dir':''} ${isCut?'cut':''}" draggable="true" ondragstart="fsDragStart(event,${i})" ondragend="fsDragEnd()"
+    ${x.dir?`ondragover="fsDragOver(event,${i})" ondragleave="this.classList.remove('dropon')" ondrop="fsDrop(event,${i})"`:''}
+    ondblclick="fsOpen(${i})" oncontextmenu="fsMenu(event,${i})">
+    ${x.dir?ic('files'):ic('disk')}<span class="fname" onclick="if(${!!x.dir})fsOpen(${i})" ${x.dir?'style="cursor:pointer"':''} title="${esc(x.path)}">${esc(x.name)}</span>
+    ${x.found?`<span class="fmeta" title="${esc(x.path)}">${esc(x.path.slice(0,60))}${x.path.length>60?'…':''}</span>`:`<span class="fmeta">${size}</span><span class="fmeta">${esc(x.mod||'')}</span>`}</div>`;
+}
+function fsOpen(i){const x=FS_ITEMS[i];if(!x)return;
+  if(x.dir)driveGo(DRV.agent,x.path);
+  else{job(DRV.agent,'open',{path:x.path});toast('Opened on '+NMA(DRV.agent)+"'s screen");}}
+function fsMenu(ev,i){ev.preventDefault();const x=FS_ITEMS[i];if(!x)return;
+  let m=$('#ctxmenu');if(!m){m=document.createElement('div');m.id='ctxmenu';document.body.appendChild(m);
+    document.addEventListener('click',()=>{m.style.display='none'},true);}
+  m.innerHTML=`
+    <div class="ci" onclick="fsOpen(${i})">${ic(x.dir?'files':'play')} Open${x.dir?'':' on '+esc(NMA(DRV.agent))}</div>
+    <div class="sep"></div>
+    <div class="ci" onclick="fsClip(${i},'copy')">${ic('install')} Copy</div>
+    <div class="ci" onclick="fsClip(${i},'move')">${ic('up')} Cut</div>
+    ${CLIP&&x.dir?`<div class="ci" onclick="fsPaste(${JSON.stringify(x.path)})">${ic('save')} Paste into ${esc(x.name)}</div>`:''}
+    <div class="sep"></div>
+    <div class="ci" onclick="fsSendChat(${i})">${ic('ai')} Send to chat</div>
+    <div class="sep"></div>
+    <div class="ci danger" onclick="fsDelete(${i})">${ic('warn')} Delete</div>`;
+  m.style.display='block';
+  const mw=210,mh=m.offsetHeight||240;
+  m.style.left=Math.min(ev.clientX,innerWidth-mw-8)+'px';
+  m.style.top=Math.min(ev.clientY,innerHeight-mh-8)+'px';
+  renderIcons(m);
+}
+function fsClip(i,op){const x=FS_ITEMS[i];CLIP={op,agent:DRV.agent,path:x.path,name:x.name,dir:!!x.dir};
+  toast((op==='copy'?'Copied: ':'Cut: ')+x.name+' — right-click a folder (or use Paste) to drop it');fsCrumbs();
+  const el=$('#fslist');if(el&&!$('#fsq2').value)el.innerHTML=FS_ITEMS.map((y,j)=>fsRow(y,j)).join('');}
+async function fsPaste(dstPath){
+  if(!CLIP)return;const dst=(dstPath||DRV.path).replace(/\\+$/,'');
+  if(CLIP.agent!==DRV.agent){
+    // Cross-PC paste: stage through the brain (files only), delete source if it was Cut.
+    if(CLIP.dir){toast('Folders can’t be pasted between PCs yet — paste files individually',true);return;}
+    const clip=CLIP;CLIP=null;fsCrumbs();
+    toast('Sending '+clip.name+' from '+NMA(clip.agent)+'…');
+    const dev=DEVS.find(v=>v.agent===DRV.agent)||{};
+    const r=await api('/transfer',{method:'POST',body:JSON.stringify({from:clip.agent,src:clip.path,to:DRV.agent,toHost:dev.host,dest:dst})});
+    if(!r.ok){toast('Transfer failed to start',true);return;}
+    const j=await waitJob(r.id,300000);
+    const done=j&&j.result&&j.result.ok;
+    if(done&&clip.op==='move')await fsop({agent:clip.agent,op:'delete',path:clip.path});
+    toast(done?('✓ '+clip.name+(clip.op==='move'?' moved':' copied')+' to '+dst):(j?('Transfer: '+((j.result&&(j.result.stderr||j.result.stdout))||'failed')):'Transfer still running in the background'),!done);
+    if(done)driveGo(DRV.agent,DRV.path);
+    return;}
+  toast((CLIP.op==='copy'?'Copying':'Moving')+' '+CLIP.name+'…');
+  const r=await fsop({agent:DRV.agent,op:CLIP.op,src:CLIP.path,dst:dst+'\\'+CLIP.name});
+  toast(r.ok?((CLIP.op==='copy'?'Copied to ':'Moved to ')+dst):('Failed: '+(r.error||'')),!r.ok);
+  if(r.ok){CLIP=null;driveGo(DRV.agent,DRV.path);}}
+async function fsDelete(i){const x=FS_ITEMS[i];
+  if(!confirm('Delete "'+x.name+'"'+(x.dir?' and everything inside it':'')+' from '+NMA(DRV.agent)+'?\n\nThis cannot be undone.'))return;
+  const r=await fsop({agent:DRV.agent,op:'delete',path:x.path});
+  toast(r.ok?('Deleted '+x.name):('Failed: '+(r.error||'')),!r.ok);
+  if(r.ok)driveGo(DRV.agent,DRV.path);}
+function fsSendChat(i){const x=FS_ITEMS[i];
+  CHAT_ATTACH={agent:DRV.agent,path:x.path,name:x.name,dir:!!x.dir};
+  CHAT.push({role:'assistant',content:'📎 Got it — "'+x.name+'" on '+NMA(DRV.agent)+'.\nWhat do you want to do with it? I can copy or move it (to another folder or PC), delete it, check its size, or find related files.'});
+  go('ai');}
+/* ---- Drag & drop: within a PC (drop on a folder) and between PCs (drop on the dock) ---- */
+let DRAG=null;
+function fsDragStart(ev,i){const x=FS_ITEMS[i];DRAG={agent:DRV.agent,path:x.path,name:x.name,dir:!!x.dir};
+  ev.dataTransfer.setData('text/plain',x.path);ev.dataTransfer.effectAllowed='copyMove';fsShowDock();}
+function fsDragEnd(){DRAG=null;fsHideDock();document.querySelectorAll('.fsrow.dropon').forEach(r=>r.classList.remove('dropon'));}
+function fsDragOver(ev,i){const x=FS_ITEMS[i];if(!DRAG||!x||!x.dir||x.path===DRAG.path)return;ev.preventDefault();ev.currentTarget.classList.add('dropon');}
+function fsDrop(ev,i){ev.preventDefault();ev.currentTarget.classList.remove('dropon');const x=FS_ITEMS[i];
+  if(!DRAG||!x||!x.dir||x.path===DRAG.path)return;fsMoveTo(DRAG,x.path);}
+async function fsMoveTo(drag,folder){
+  toast('Moving '+drag.name+' → '+folder);
+  const r=await fsop({agent:drag.agent,op:'move',src:drag.path,dst:folder.replace(/\\+$/,'')+'\\'+drag.name});
+  toast(r.ok?('Moved to '+folder):('Failed: '+(r.error||'')),!r.ok);
+  if(r.ok)driveGo(DRV.agent,DRV.path);}
+function fsShowDock(){
+  let d=$('#pcdock');if(!d){d=document.createElement('div');d.id='pcdock';document.body.appendChild(d);}
+  const others=DEVS.filter(v=>v.online&&v.agent!==DRV.agent);
+  d.innerHTML=(others.length?'<span class="dockhint">Drop on a PC to send it there</span>':'<span class="dockhint">No other PCs online</span>')
+    +others.map(v=>`<div class="dockpc" ondragover="event.preventDefault();this.classList.add('hot')" ondragleave="this.classList.remove('hot')" ondrop="fsDropPC(event,'${v.agent}')">${ic('monitor')} ${esc(NM(v))}</div>`).join('');
+  d.classList.add('on');}
+function fsHideDock(){const d=$('#pcdock');if(d)d.classList.remove('on');}
+async function fsDropPC(ev,agent){ev.preventDefault();
+  const drag=DRAG;fsDragEnd();if(!drag)return;
+  if(drag.dir){toast('Folders can’t be sent between PCs yet — send files individually',true);return;}
+  const dev=DEVS.find(v=>v.agent===agent)||{};
+  const cloud=(((dev.stats)||{}).drives||[]).find(isCloud);
+  const def=cloud?(cloud.letter+':\\'):'C:\\Users\\Public\\Downloads';
+  const dest=prompt('Folder on '+NM(dev)+' to receive "'+drag.name+'":',def);
+  if(dest===null)return;
+  toast('Sending '+drag.name+' → '+NM(dev)+'…');
+  const r=await api('/transfer',{method:'POST',body:JSON.stringify({from:drag.agent,src:drag.path,to:agent,toHost:dev.host,dest})});
+  if(!r.ok){toast('Transfer failed to start',true);return;}
+  const j=await waitJob(r.id,300000);
+  const done=j&&j.result&&j.result.ok;
+  toast(done?('✓ '+drag.name+' sent — landing in '+dest+' on '+NM(dev)):(j?('Transfer: '+((j.result&&(j.result.stderr||j.result.stdout))||'failed')):'Transfer still running in the background'),!done);}
+async function waitJob(id,timeout=180000){const end=Date.now()+timeout;
+  while(Date.now()<end){await new Promise(z=>setTimeout(z,2000));
+    const j=await api('/jobs');const job=(j.jobs||[]).find(x=>x.id===id);
+    if(job&&(job.status==='done'||job.status==='error'))return job;}
+  return null;}
+/* ---------- Network ---------- */
+async function renderNetwork(){$('#view').innerHTML='<div class="card">Scanning the network…</div>';
+  const n=await api('/net');const inet=n.internet||{};
+  const up=inet.up;const badge=up===true?'<span class="pill on" style="position:static">UP</span>':up===false?'<span class="pill off" style="position:static">DOWN</span>':'<span class="chip">checking…</span>';
+  const devs=n.devices||[];
+  $('#view').innerHTML=`
+  <div class="card"><h3 style="margin:0 0 8px">Internet ${badge}</h3>
+    <div class="row"><span class="chip">Speed <b>${inet.lastMbps!=null?inet.lastMbps+' Mbps':'—'}</b></span>
+    <span class="chip">last checked <b>${inet.checked?tAgo(inet.checked):'—'}</b></span>
+    ${inet.downSince?`<span class="chip" style="color:var(--bad)">down since ${tAgo(inet.downSince)}</span>`:''}</div></div>
+  <div class="card"><div class="row" style="justify-content:space-between"><h3 style="margin:0">Devices on Wi-Fi (${devs.length})</h3>
+    <div class="btn sm" onclick="rescanNet()">${ic('refresh')} Rescan</div></div>
+    <p style="color:var(--mut);font-size:12.5px;margin:6px 0 4px">Everything the brain can see on your LAN. Name the ones you recognize; an unknown device that shows up out of nowhere is worth a look.</p>
+    ${devs.length?devs.map(d=>`<div class="drv"><span class="dl" style="width:120px;font-family:Consolas,monospace">${esc(d.ip||'')}</span>
+      <div class="db"><input value="${esc(d.name||'')}" placeholder="unnamed — click to label" style="width:100%;padding:5px 8px;font-size:12.5px" onchange="nameDev('${d.mac}',this.value)"></div>
+      <span class="dn" style="font-family:Consolas,monospace;font-size:11px">${esc(d.mac||'')}</span>
+      <span class="dn">seen ${d.last?tAgo(d.last):'—'}</span></div>`).join(''):'<div class="pcsub">No devices found yet — hit Rescan (takes ~15s).</div>'}
+    <div class="pcsub" style="margin-top:8px">Last scan: ${n.scanned?tAgo(n.scanned):'never'}</div></div>`;
+}
+async function rescanNet(){await api('/net/scan',{method:'POST',body:'{}'});toast('Scanning… refresh in ~15s');setTimeout(()=>{if(VIEW==='network')renderNetwork();},15000);}
+async function nameDev(mac,name){await api('/net/name',{method:'POST',body:JSON.stringify({mac,name})});toast('Saved');}
+/* ---------- AI ---------- */
+let CHAT=[];
+function renderAI(){toggleAI(true);}
+function toggleAI(open){const p=$('#rpanel');if(!p)return;
+  if(open===undefined)open=!p.classList.contains('open');
+  p.classList.toggle('open',open);
+  drawChat();drawAttach();
+  if(open){const i=$('#chatin');if(i)setTimeout(()=>i.focus(),60);}
+}
+function drawAttach(){const a=$('#chatattach');if(!a)return;
+  a.innerHTML=CHAT_ATTACH?`<div class="attach">📎 <code title="${esc(CHAT_ATTACH.path)}">${esc(CHAT_ATTACH.name)}</code><span class="dn">on ${esc(NMA(CHAT_ATTACH.agent))}</span><span class="x" onclick="CHAT_ATTACH=null;drawAttach()" title="Detach">✕</span></div>`:'';}
+function drawChat(){const l=$('#chatlog');if(!l)return;
+  if(!CHAT.length){l.innerHTML=`<div class="rp-empty">Ask me anything about your fleet — or tell me to do it.<br><br>“what’s eating MainPC’s CPU?”<br>“install VLC on plexserver”<br>“turn VPN on for everything”</div>`;return;}
+  l.innerHTML=CHAT.map(m=>m.role==='trace'?`<div class="msg t">${ic('wrench')} ${esc(m.content)}</div>`:`<div class="msg ${m.role==='user'?'u':'a'}">${esc(m.content)}</div>`).join('');l.scrollTop=l.scrollHeight;}
+function esc(s){return (s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}
+async function sendChat(){const i=$('#chatin');const q=i.value.trim();if(!q)return;i.value='';
+  // If a file is attached (Drive → Send to chat), give the AI its full path+PC invisibly.
+  const apiText=CHAT_ATTACH?`[Attached file: "${CHAT_ATTACH.path}" (${CHAT_ATTACH.dir?'folder':'file'}) on PC "${CHAT_ATTACH.agent}"]\n${q}`:q;
+  CHAT.push({role:'user',content:q,apiContent:apiText});drawChat();
+  CHAT.push({role:'assistant',content:'…'});drawChat();
+  const msgs=CHAT.filter(m=>m.role==='user'||m.role==='assistant').filter(m=>m.content!=='…').map(m=>({role:m.role,content:m.apiContent||m.content}));
+  const r=await api('/ai/chat',{method:'POST',body:JSON.stringify({messages:msgs})});
+  CHAT.pop();
+  (r.trace||[]).forEach(t=>CHAT.push({role:'trace',content:t.tool+(t.agent?(' '+t.agent):'')+' → '+JSON.stringify(t.result).slice(0,180)}));
+  CHAT.push({role:'assistant',content:r.reply||'(no reply)'+(r.provider?'':' — set an AI key in Settings')});drawChat();
+}
+/* ---------- Backups ---------- */
+async function renderBackups(){const b=await api('/backups');
+  $('#view').innerHTML=`<div class="h2">Backup jobs<span class="ln"></span></div>
+  <div class="grid cards">${(b.jobs||[]).map((j,i)=>`<div class="card"><b>${j.name}</b><div class="pcsub">${j.src} → ${j.remote}</div><div class="pcsub">on ${j.agent}</div><div class="btn sm" style="margin-top:8px" onclick="runBackup(${i})">Run now</div></div>`).join('')||'<div class="card">No backup jobs yet. Add one in Settings (rclone remote required on the PC).</div>'}</div>`;
+  window._backups=b.jobs||[];
+}
+async function runBackup(i){const j=window._backups[i];await api('/backup/run',{method:'POST',body:JSON.stringify(j)});toast('Backup started: '+j.name);}
+/* ---------- Settings ---------- */
+async function renderSettings(){const keys=await api('/ai/keys');const plex=await api('/plex/config');const tg=await api('/telegram');
+  let h={};try{h=await api('/health');HEALTH=h;}catch(e){}
+  const bk=h.backup, bLine=bk?(bk.ok?`<span class="sdot ok"></span> ${tAgo(bk.at)} → <code>${esc(bk.dir||'')}</code>`:`<span class="sdot bad"></span> failed ${tAgo(bk.at)} — ${esc(bk.error||'')}`):'not yet run (runs ~2 min after the brain starts, then daily)';
+  const healthRows=(h.agents||[]).map(a=>`<div class="drv"><span style="font-weight:640;min-width:130px">${NMH(a.host)||a.host}</span>
+    <span class="dn" style="flex:1;text-align:left">${a.ver?('agent v'+a.ver+(h.agentVersion&&a.ver!==h.agentVersion?' <span style="color:var(--warn)">'+ic('up')+' v'+h.agentVersion+' pending</span>':'')):'<span style="color:var(--warn)">old agent — updates on next restart</span>'}</span>
+    <span class="dn"><span class="sdot ${a.persist?'ok':'warn'}"></span> autostart</span>
+    <span class="dn"><span class="sdot ${a.launcher?'ok':'warn'}"></span> launcher</span>
+    <span class="dn"><span class="sdot ${a.online?'ok':'off'}"></span> ${a.online?'online':'seen '+tAgo(a.last_seen)}</span></div>`).join('');
+  $('#view').innerHTML=`
+  <div class="card"><h3 style="margin:0 0 4px">System health</h3><p style="color:var(--mut);font-size:13px">The brain checks itself: versions, self-backup, and each PC's watchdog status.</p>
+    <div class="row" style="margin-bottom:8px">
+      <span class="chip">brain <b>v${h.version||'?'}</b></span>
+      <span class="chip">up <b>${h.uptimeSec!=null?fmtUp(h.uptimeSec):'?'}</b></span>
+      <span class="chip">database <b>${h.dbBytes!=null?(h.dbBytes/1048576).toFixed(1)+' MB':'?'}</b></span>
+      <span class="chip">jobs 24h <b>${h.jobs24h?h.jobs24h.total:'?'}</b>${h.jobs24h&&h.jobs24h.errors?` <span style="color:var(--bad)">(${h.jobs24h.errors} errors)</span>`:''}</span>
+    </div>
+    <div style="font-size:12.5px;color:var(--mut);margin-bottom:6px">Self-backup: ${bLine}</div>
+    ${healthRows||'<div class="pcsub">No PCs enrolled yet.</div>'}</div>
+  <div class="card"><h3 style="margin:0 0 4px;display:flex;align-items:center;gap:7px">${ic('shield')} Security</h3><p style="color:var(--mut);font-size:13px">Kill switch freezes all actions across the house (installs, VPN toggles, power, downloads) while still showing live status. Use it if something looks wrong.</p>
+    <div class="row" style="justify-content:space-between;padding:8px 0;border-top:1px solid var(--line)">
+      <label class="row" style="gap:8px"><input type="checkbox" id="killsw" style="width:auto" onchange="toggleKill()"> <b>Read-only mode (kill switch)</b></label>
+      <span id="killstate" class="pill on" style="position:static">actions allowed</span></div>
+    <div class="h2" style="margin:14px 0 8px">Audit log — every action, newest first<span class="ln"></span><span class="btn sm" onclick="loadAudit()">${ic('refresh')} Refresh</span></div>
+    <input id="auditq" placeholder="filter (e.g. install, login, plexserver)…" style="width:100%;margin-bottom:8px" oninput="renderAudit()">
+    <div id="auditlog" style="max-height:320px;overflow:auto;font-family:Consolas,monospace;font-size:11.5px"></div>
+    <div class="h2" style="margin:14px 0 8px">Sessions<span class="ln"></span></div>
+    <p style="color:var(--mut);font-size:12.5px;margin:0 0 8px">Logging in from a browser creates a session that lasts 30 days. If you lose a device, sign every browser out — they'll all need the password again.</p>
+    <div class="btn sm warn" onclick="signoutAll()">Sign out all browsers</div></div>
+  <div class="card"><h3 style="margin:0 0 4px">Alerts &amp; morning digest</h3><p style="color:var(--mut);font-size:13px">The brain watches the house and messages you on Telegram (set up the bot below first). Alerts also always show at the top of Fleet.</p>
+    <div class="row" style="padding:7px 0;border-top:1px solid var(--line)"><label class="row" style="gap:8px"><input type="checkbox" id="r_driveFull" style="width:auto"> Drive nearly full — alert at</label><input id="rv_driveFull" type="number" min="50" max="99" style="width:70px">%</div>
+    <div class="row" style="padding:7px 0;border-top:1px solid var(--line)"><label class="row" style="gap:8px"><input type="checkbox" id="r_offline" style="width:auto"> PC goes offline — alert after</label><input id="rv_offline" type="number" min="1" max="1440" style="width:70px">min</div>
+    <div class="row" style="padding:7px 0;border-top:1px solid var(--line)"><label class="row" style="gap:8px"><input type="checkbox" id="r_vpnDrop" style="width:auto"> VPN turns off on a PC</label></div>
+    <div class="row" style="padding:7px 0;border-top:1px solid var(--line)"><label class="row" style="gap:8px"><input type="checkbox" id="r_jobFail" style="width:auto"> A job fails</label></div>
+    <div class="row" style="padding:7px 0;border-top:1px solid var(--line)"><label class="row" style="gap:8px"><input type="checkbox" id="r_newDevice" style="width:auto"> A new device joins the Wi-Fi</label></div>
+    <div class="row" style="padding:7px 0;border-top:1px solid var(--line)"><label class="row" style="gap:8px"><input type="checkbox" id="r_internet" style="width:auto"> Internet goes down</label></div>
+    <div class="row" style="padding:7px 0;border-top:1px solid var(--line)"><label class="row" style="gap:8px"><input type="checkbox" id="r_digest" style="width:auto"> Morning digest at</label><input id="rv_digest" type="number" min="0" max="23" style="width:70px">:00
+      <label class="row" style="gap:6px;margin-left:14px"><input type="checkbox" id="rv_digest_ai" style="width:auto"> ${ic('ai')} written by AI (needs a working AI provider)</label></div>
+    <div class="row" style="padding:7px 0;border-top:1px solid var(--line)"><label class="row" style="gap:8px"><input type="checkbox" id="r_nightlyBackup" style="width:auto"> Run backup jobs nightly at</label><input id="rv_nightlyBackup" type="number" min="0" max="23" style="width:70px">:00</div>
+    <div class="row" style="margin-top:10px"><div class="btn" onclick="saveRules()">Save alerts</div><div class="btn sm" onclick="testDigest()">Send test digest</div></div>
+    <pre id="digestPreview" class="hidden" style="font-size:12px;color:var(--mut);background:rgba(0,0,0,.25);border:1px solid var(--line);border-radius:9px;padding:10px;white-space:pre-wrap;margin-top:10px"></pre></div>
+  <div class="card"><h3 style="margin:0 0 4px">AI provider keys</h3><p style="color:var(--mut);font-size:13px">Stored locally on the brain only. Default provider tried first, others as fallback.</p>
+    ${keys.providers.map(p=>`<div class="row" style="border-top:1px solid var(--line);padding:10px 0">
+      <b style="width:80px;text-transform:capitalize">${p.id}</b>
+      <input id="k_${p.id}" placeholder="${p.hasKey?('key set '+p.masked):'paste API key'}" style="flex:1;min-width:160px">
+      ${(p.id==='fangu'||p.id==='ollama')?`<input id="b_${p.id}" placeholder="base URL (OpenAI-compatible)" value="${p.baseUrl||''}" style="flex:1;min-width:150px">`:''}
+      <input id="m_${p.id}" placeholder="model" value="${p.model||''}" style="width:150px">
+      <div class="btn sm" onclick="saveKey('${p.id}')">Save</div>
+      <div class="btn sm" onclick="saveKey('${p.id}',true)">Save + default</div>
+      ${keys.default===p.id?'<span class="pill on">DEFAULT</span>':''}</div>`).join('')}</div>
+  <div class="card"><h3 style="margin:0 0 4px">Plex</h3><p style="color:var(--mut);font-size:13px">Token lets the dashboard browse your library and play on any PC. (Plex Web → ⋯ → Get Info → View XML → copy X-Plex-Token.)</p>
+    <div class="field"><label>Server URL</label><input id="plexUrl" value="${plex.baseUrl||''}"></div>
+    <div class="field"><label>X-Plex-Token ${plex.hasToken?'(set)':''}</label><input id="plexTok" placeholder="paste token"></div>
+    <div class="btn" onclick="savePlex()">Save Plex</div></div>
+  <div class="card"><h3 style="margin:0 0 4px">Telegram — "homedashboard" bot</h3><p style="color:var(--mut);font-size:13px">Create a bot with @BotFather, paste its token + your numeric chat ID. Only your ID is honored.</p>
+    <div class="field"><label>Bot token ${tg.hasToken?'(set)':''}</label><input id="tgTok" placeholder="123456:AA…"></div>
+    <div class="field"><label>Your chat ID</label><input id="tgId" value="${tg.ownerId||''}" placeholder="numeric id from @userinfobot"></div>
+    <div class="row"><label class="row" style="gap:6px"><input type="checkbox" id="tgEn" ${tg.enabled?'checked':''} style="width:auto"> Enabled</label>
+    <div class="btn" onclick="saveTg()">Save</div><div class="btn sm" onclick="saveTg(true)">Save + test message</div></div></div>
+  <div class="card"><h3 style="margin:0 0 4px">Dashboard password</h3><p style="color:var(--mut);font-size:13px">The password your PCs use to open the dashboard. Change it anytime.</p>
+    <div class="field"><label>New password</label><input id="newpw" type="password" placeholder="new password"></div>
+    <div class="btn" onclick="changePw()">Change password</div></div>
+  <div class="card"><h3 style="margin:0 0 4px">Add a PC</h3><p style="color:var(--mut);font-size:13px">On the new PC, open PowerShell and run:</p>
+    <code>irm ${location.origin.replace(location.hostname,location.hostname==='localhost'?'192.168.1.174':location.hostname)}/bootstrap | iex</code></div>`;
+  loadRules();loadKill();loadAudit();
+}
+let AUDIT=[];
+async function loadKill(){try{const k=await api('/killswitch');const cb=$('#killsw');if(cb){cb.checked=!!k.readOnly;$('#killstate').textContent=k.readOnly?'FROZEN — read only':'actions allowed';$('#killstate').className='pill '+(k.readOnly?'off':'on');$('#killstate').style.position='static';}}catch(e){}}
+async function toggleKill(){const on=$('#killsw').checked;const r=await api('/killswitch',{method:'POST',body:JSON.stringify({on})});$('#killstate').textContent=r.readOnly?'FROZEN — read only':'actions allowed';$('#killstate').className='pill '+(r.readOnly?'off':'on');$('#killstate').style.position='static';toast(r.readOnly?'Kill switch ON — actions frozen':'Kill switch off — actions allowed');}
+async function loadAudit(){try{AUDIT=(await api('/audit?n=200')).audit||[];renderAudit();}catch(e){}}
+async function signoutAll(){if(!confirm('Sign out every browser (including this one)? The password will be needed to get back in.'))return;
+  await api('/auth/signout-all',{method:'POST',body:'{}'});localStorage.removeItem('brainToken');toast('All browsers signed out');setTimeout(()=>location.reload(),1200);}
+function renderAudit(){const q=($('#auditq')?.value||'').toLowerCase();const el=$('#auditlog');if(!el)return;
+  const rows=AUDIT.filter(e=>!q||JSON.stringify(e).toLowerCase().includes(q)).slice(0,300);
+  el.innerHTML=rows.map(e=>{const t=(e.t||'').slice(5,16).replace('T',' ');const {t:_t,event,...rest}=e;
+    const detail=Object.entries(rest).map(([k,v])=>`${k}=${typeof v==='object'?JSON.stringify(v):v}`).join(' ');
+    const col=/error|fail/.test(event)?'var(--bad)':/killswitch|login/.test(event)?'var(--warn)':'var(--mut)';
+    return `<div style="padding:3px 0;border-top:1px solid rgba(255,255,255,.05)"><span style="color:var(--dim)">${t}</span> <b style="color:${col}">${event}</b> <span style="color:var(--mut)">${esc(detail).slice(0,180)}</span></div>`;}).join('')||'<div class="pcsub">No matching entries.</div>';}
+async function loadRules(){try{const r=(await api('/rules')).rules||{};
+  const vals={driveFull:'pct',offline:'mins',digest:'hour',nightlyBackup:'hour'};
+  for(const k of ['driveFull','offline','vpnDrop','jobFail','newDevice','internet','digest','nightlyBackup']){
+    const cb=$('#r_'+k);if(cb)cb.checked=!!(r[k]&&r[k].on);
+    if(vals[k]&&$('#rv_'+k))$('#rv_'+k).value=(r[k]||{})[vals[k]]??'';}
+  if($('#rv_digest_ai'))$('#rv_digest_ai').checked=!!((r.digest||{}).ai);
+}catch(e){}}
+async function saveRules(){const rules={
+  driveFull:{on:$('#r_driveFull').checked,pct:parseInt($('#rv_driveFull').value)||90},
+  offline:{on:$('#r_offline').checked,mins:parseInt($('#rv_offline').value)||10},
+  vpnDrop:{on:$('#r_vpnDrop').checked},
+  jobFail:{on:$('#r_jobFail').checked},
+  newDevice:{on:$('#r_newDevice').checked},
+  internet:{on:$('#r_internet').checked},
+  digest:{on:$('#r_digest').checked,hour:parseInt($('#rv_digest').value)||7,ai:$('#rv_digest_ai').checked},
+  nightlyBackup:{on:$('#r_nightlyBackup').checked,hour:parseInt($('#rv_nightlyBackup').value)||2}};
+  await api('/rules',{method:'POST',body:JSON.stringify({rules})});toast('Alert rules saved');}
+async function testDigest(){const r=await api('/rules/test',{method:'POST',body:'{}'});
+  const p=$('#digestPreview');p.classList.remove('hidden');p.textContent=r.text||'(no digest)';
+  toast(r.sent?'Digest sent to Telegram':'Preview below — Telegram not set up yet, so nothing was sent',!r.sent);}
+async function saveKey(id,def){const body={provider:id,key:$('#k_'+id).value||undefined,model:$('#m_'+id).value||undefined,setDefault:!!def};if(id==='fangu'||id==='ollama')body.baseUrl=$('#b_'+id).value||undefined;await api('/ai/keys',{method:'POST',body:JSON.stringify(body)});toast(id+' saved');renderSettings();}
+async function savePlex(){await api('/plex/config',{method:'POST',body:JSON.stringify({baseUrl:$('#plexUrl').value,token:$('#plexTok').value||undefined})});toast('Plex saved');}
+async function saveTg(test){await api('/telegram',{method:'POST',body:JSON.stringify({token:$('#tgTok').value||undefined,ownerId:parseInt($('#tgId').value)||undefined,enabled:$('#tgEn').checked,test:!!test})});toast('Telegram saved'+(test?' + test sent':''));}
+async function changePw(){const v=$('#newpw').value;if(v.length<3){toast('At least 3 characters',true);return;}const r=await api('/auth/set',{method:'POST',body:JSON.stringify({password:v})});if(r.ok){toast('Password changed');$('#newpw').value='';}else toast('Could not change password',true);}
+/* ---------- Command palette ---------- */
+function palette(){$('#kbd').classList.add('on');$('#kin').value='';$('#kin').focus();drawPalette();}
+function paletteActions(){const acts=[];DEVS.forEach(d=>{acts.push({t:`VPN on — ${NM(d)}`,f:()=>pia(d.agent,'on')});acts.push({t:`VPN off — ${NM(d)}`,f:()=>pia(d.agent,'off')});acts.push({t:`Restart ${NM(d)}`,f:()=>power(d.agent,'restart')});acts.push({t:`Details ${NM(d)}`,f:()=>go('pc:'+d.agent)});CATALOG.apps.slice(0,20).forEach(a=>acts.push({t:`Install ${a.name} on ${NM(d)}`,f:()=>install(d.agent,a.id)}));});
+  ['fleet','install','media','files','drive','ai','backups','settings'].forEach(v=>acts.push({t:'Go: '+v,f:()=>go(v)}));return acts;}
+let PK=[],PKi=0;
+function drawPalette(){const q=$('#kin').value.toLowerCase();PK=paletteActions().filter(a=>a.t.toLowerCase().includes(q)).slice(0,40);PKi=0;
+  $('#kres').innerHTML=PK.map((a,i)=>`<div class="kitem ${i===0?'sel':''}" onclick="PK[${i}].f();$('#kbd').classList.remove('on')">${a.t}</div>`).join('');}
+function paletteKey(e){if(e.key==='ArrowDown'){PKi=Math.min(PK.length-1,PKi+1)}else if(e.key==='ArrowUp'){PKi=Math.max(0,PKi-1)}else if(e.key==='Enter'){if(PK[PKi]){PK[PKi].f();$('#kbd').classList.remove('on')}return}else return;
+  [...$('#kres').children].forEach((c,i)=>c.classList.toggle('sel',i===PKi));}
+boot();
+</script>
+</body></html>
