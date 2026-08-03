@@ -904,7 +904,7 @@ def check_request_arrivals():
         hit = next((t for t, ts in recent
                     if ts > req_ts and words and all(w in t.lower() for w in words)), None)
         if hit:
-            msgs.append(f"🎬 \"{hit}\" is on Plex now — requested {req['at'][:10]} ✓")
+            msgs.append(f"\"{hit}\" is on Plex now — requested {req['at'][:10]} (done)")
         elif req_ts and time.time() - req_ts > 7 * 86400:
             pass  # expire silently after a week
         else:
@@ -1121,8 +1121,8 @@ def rules_cfg():
 
 def compose_digest():
     devs = list_devices()
-    lines = ["🧠 Home Brain — " + datetime.now().strftime("%a %b %d, %I:%M %p")]
-    lines.append("PCs: " + (" · ".join(f"{'🟢' if d['online'] else '⚫'} {d['host']}" for d in devs) or "none enrolled"))
+    lines = ["Home Brain — " + datetime.now().strftime("%a %b %d, %I:%M %p")]
+    lines.append("PCs: " + (" · ".join(f"{'[online]' if d['online'] else '[offline]'} {d['host']}" for d in devs) or "none enrolled"))
     lines.append("VPN: " + (" · ".join(f"{d['host']}: {d['stats'].get('pia', '?')}" for d in devs if d["online"]) or "—"))
     fc = compute_forecasts()
     hot = []
@@ -1138,12 +1138,12 @@ def compose_digest():
         lines.append("Disks ≥80%:")
         lines += [h[1] for h in hot[:6]]
     else:
-        lines.append("Disks: all under 80% ✓")
+        lines.append("Disks: all under 80%")
     b = load_json(MAINT_F, {}).get("lastBackup") or {}
     if b.get("ok"):
-        lines.append("Self-backup: ✓ " + b.get("at", "")[:16].replace("T", " "))
+        lines.append("Self-backup: OK " + b.get("at", "")[:16].replace("T", " "))
     elif b:
-        lines.append("Self-backup: ✗ " + (b.get("error") or "failed")[:80])
+        lines.append("Self-backup: FAILED " + (b.get("error") or "failed")[:80])
     else:
         lines.append("Self-backup: not yet run")
     since = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
@@ -1153,7 +1153,7 @@ def compose_digest():
     lines.append(f"Jobs 24h: {tot - errs} ok" + (f", {errs} failed" if errs else ""))
     ns = net_status()
     if ns.get("up") is not None:
-        net_line = "Internet: " + ("up ✓" if ns.get("up") else "DOWN ✗")
+        net_line = "Internet: " + ("up" if ns.get("up") else "DOWN")
         if ns.get("lastMbps"):
             net_line += f" ({ns['lastMbps']} Mbps)"
         lines.append(net_line)
@@ -1195,14 +1195,14 @@ def netwatch_loop():
             if r.get("internet", {}).get("on"):
                 if st.get("up") is True and not up:
                     st["downSince"] = now_iso()
-                    if tg_on: tg_send("🌐 Internet appears DOWN")
+                    if tg_on: tg_send("Internet appears DOWN")
                 elif st.get("up") is False and up and st.get("downSince"):
                     try:
                         secs = (datetime.now(timezone.utc) - datetime.fromisoformat(st["downSince"])).total_seconds()
                         mins = int(secs / 60)
                     except Exception:
                         mins = 0
-                    if tg_on: tg_send(f"🌐 Internet is back (was down ~{mins} min)")
+                    if tg_on: tg_send(f"Internet is back (was down ~{mins} min)")
                     st["downSince"] = None
             st["up"] = up
             st["checked"] = now_iso()
@@ -1220,7 +1220,7 @@ def netwatch_loop():
                 new_macs = net_scan()
                 if r.get("newDevice", {}).get("on") and tg_on:
                     for mac, ip in new_macs:
-                        tg_send(f"📶 New device joined Wi-Fi: {ip} ({mac})")
+                        tg_send(f"New device joined Wi-Fi: {ip} ({mac})")
         except Exception as e:
             audit("netwatch_error", err=str(e)[:200])
         time.sleep(60)
@@ -1248,14 +1248,14 @@ def rules_loop():
                     a = d["agent"]
                     if d["online"]:
                         if state.get(f"{a}:offAlerted"):
-                            send(f"✅ {d['host']} is back online")
+                            send(f"{d['host']} is back online")
                         state[f"{a}:offSince"] = None
                         state[f"{a}:offAlerted"] = False
                     else:
                         if not state.get(f"{a}:offSince"):
                             state[f"{a}:offSince"] = now
                         elif not state.get(f"{a}:offAlerted") and now - float(state[f"{a}:offSince"]) >= mins * 60:
-                            send(f"⚠️ {d['host']} has been offline for over {int(mins)} min")
+                            send(f"{d['host']} has been offline for over {int(mins)} min")
                             state[f"{a}:offAlerted"] = True
 
             if r["vpnDrop"].get("on"):
@@ -1263,7 +1263,7 @@ def rules_loop():
                     pia = d["stats"].get("pia")
                     k = f"{d['agent']}:pia"
                     if d["online"] and pia == "Disconnected" and state.get(k) not in (None, "Disconnected"):
-                        send(f"🔓 VPN (PIA) turned OFF on {d['host']}")
+                        send(f"VPN (PIA) turned OFF on {d['host']}")
                     state[k] = pia
 
             if r["driveFull"].get("on"):
@@ -1278,7 +1278,7 @@ def rules_loop():
                             if not state.get(k):
                                 fd = (fc.get(d["agent"]) or {}).get(dr.get("letter"))
                                 extra = f", full in ~{round(fd)}d" if fd else ""
-                                send(f"💾 {d['host']} drive {dr.get('letter')}: {dr.get('usedPct')}% full ({dr.get('freeGB')}GB left{extra})")
+                                send(f"{d['host']} drive {dr.get('letter')}: {dr.get('usedPct')}% full ({dr.get('freeGB')}GB left{extra})")
                             state[k] = True
                         elif dr.get("usedPct", 0) < pct - 3:
                             state[k] = False
@@ -1296,7 +1296,7 @@ def rules_loop():
                         errtxt = (json.loads(row["result"] or "{}").get("stderr") or "")[:120]
                     except Exception:
                         errtxt = ""
-                    send(f"❌ Job #{row['id']} ({row['type']}) failed on {row['agent']}: {errtxt}")
+                    send(f"Job #{row['id']} ({row['type']}) failed on {row['agent']}: {errtxt}")
                 state["lastJobId"] = mx
 
             today = datetime.now().strftime("%Y-%m-%d")
@@ -1364,25 +1364,31 @@ def tg_handle(text):
     parts = t.split()
     cmd = parts[0].lower() if parts else ""
     if cmd in ("/start", "/help", "help"):
-        tg_send("🏠 HomeDashboard commands:\n\n"
-                "— Fleet —\n"
-                "/devices — list PCs + live status\n"
-                "/status <pc> — full stats for one PC\n"
-                "/disk — drives over 80% full\n"
-                "/sync [pc] — HomeShare sync status\n\n"
-                "— Control —\n"
+        tg_send("Home Dashboard — Claude at the helm\n\n"
+                "Most natural: just tell me what you need.\n"
+                "- open Claude on mainpc\n"
+                "- how much disk is left\n"
+                "- work on powerful-websites on laptop\n"
+                "- play The Matrix\n"
+                "- find my taxes on mainpc\n"
+                "- is internet up\n"
+                "- restart mainpc\n\n"
+                "Or use slash commands:\n"
+                "/devices — PCs + status\n"
+                "/status <pc>\n"
+                "/disk — drives over 80%\n"
+                "/sync [pc] — HomeShare\n"
+                "/screenshot <pc>\n"
                 "/power <pc> restart|sleep|shutdown\n"
-                "/wake <pc> — Wake-on-LAN\n"
-                "/run <pc> <cmd> — safe diagnostics (ipconfig, ping, …)\n"
-                "/screenshot <pc> — capture screen (view on dashboard)\n"
-                "/pia <pc> on|off|status — VPN\n"
-                "/install <pc> <wingetId>\n\n"
-                "— Media —\n"
-                "/play <pc> <ratingKey>\n"
-                "/request <movie title> [year] — download to Plex, get pinged when ready")
+                "/wake <pc>\n"
+                "/pia <pc> on|off|status\n"
+                "/install <pc> <app-id>\n"
+                "/play <pc> <plex-id>\n"
+                "/request <movie> [year]\n\n"
+                "Default: I handle what you say naturally.")
     elif cmd == "/devices":
         ds = list_devices()
-        tg_send("\n".join(f"{'🟢' if d['online'] else '⚫'} {d['host']} ({d['agent']}) cpu {d['stats'].get('cpu','?')}% pia {d['stats'].get('pia','?')}" for d in ds) or "no devices")
+        tg_send("\n".join(f"{'[online]' if d['online'] else '[offline]'} {d['host']} ({d['agent']}) cpu {d['stats'].get('cpu','?')}% pia {d['stats'].get('pia','?')}" for d in ds) or "no devices")
     elif cmd == "/status" and len(parts) >= 2:
         d = next((x for x in list_devices() if x["agent"] == parts[1]), None)
         tg_send(json.dumps(d["stats"], indent=1) if d else "no such pc")
@@ -1404,19 +1410,19 @@ def tg_handle(text):
         args = parts[1:]
         year = args[-1] if args[-1].isdigit() and len(args[-1]) == 4 else ""
         q = " ".join(args[:-1] if year else args)
-        tg_send(f"🔍 Asking PlexClaw to grab: {q} {year}".strip() + " …")
+        tg_send(f"Asking PlexClaw to grab: {q} {year}".strip() + " ...")
         res = claw_request(q, year, "movie", by="telegram")
         s = res.get("status")
         if s == "ok":
-            tg_send(f"✅ Downloading {res.get('title', q)} ({res.get('quality', '?')}, {res.get('size_gb', '?')}GB) — I'll ping you when it's on Plex")
+            tg_send(f"OK: Downloading {res.get('title', q)} ({res.get('quality', '?')}, {res.get('size_gb', '?')}GB) — I'll ping you when it's on Plex")
         elif s == "not_found":
-            tg_send(f"❌ Nothing found for \"{q}\" — try adding the year")
+            tg_send(f"Nothing found for \"{q}\" — try adding the year")
         elif s == "no_quality":
-            tg_send(f"⚠️ Only bad copies (CAM/TS) of \"{q}\" exist right now — try again in a few weeks")
+            tg_send(f"Only bad copies (CAM/TS) of \"{q}\" exist right now — try again in a few weeks")
         elif s == "offline":
-            tg_send("⚠️ PlexClaw engine isn't running on the server right now")
+            tg_send("PlexClaw engine isn't running on the server right now")
         else:
-            tg_send(f"⚠️ {res.get('message', s)}")
+            tg_send(f"{res.get('message', s)}")
     elif cmd == "/play" and len(parts) >= 3:
         try:
             url = plex_play_url(parts[2])
@@ -1430,7 +1436,7 @@ def tg_handle(text):
         if action not in ("restart", "sleep", "shutdown"):
             tg_send("usage: /power <pc> restart|sleep|shutdown"); return
         enqueue(ag, "power", {"action": action}, by="telegram")
-        tg_send(f"⚡ {action} queued on {parts[1]}")
+        tg_send(f"{action} queued on {parts[1]}")
     elif cmd == "/wake" and len(parts) >= 2:
         ag = resolve_agent(parts[1]) or parts[1]
         mac = ""
@@ -1441,7 +1447,7 @@ def tg_handle(text):
             tg_send(f"no saved MAC for {parts[1]} yet — needs one online heartbeat first"); return
         try:
             wol_send(mac)
-            tg_send(f"📡 Wake-on-LAN sent to {parts[1]}")
+            tg_send(f"Wake-on-LAN sent to {parts[1]}")
         except Exception as e:
             tg_send(f"wake failed: {e}")
     elif cmd == "/run" and len(parts) >= 3:
@@ -1453,7 +1459,7 @@ def tg_handle(text):
     elif cmd == "/screenshot" and len(parts) >= 2:
         ag = resolve_agent(parts[1]) or parts[1]
         enqueue(ag, "screenshot", {}, by="telegram")
-        tg_send(f"📸 screenshot queued on {parts[1]} — view it on the dashboard in a few seconds")
+        tg_send(f"screenshot queued on {parts[1]} — view it on the dashboard in a few seconds")
     elif cmd == "/sync":
         targets = [resolve_agent(parts[1]) or parts[1]] if len(parts) >= 2 else [d["agent"] for d in list_devices() if d["online"]]
         lines = []
@@ -1469,7 +1475,7 @@ def tg_handle(text):
                     lines.append(f"{ag}: {r.get('stdout','?')}")
             else:
                 lines.append(f"{ag}: {(r.get('stderr') or 'no response')[:80]}")
-        tg_send("📂 HomeShare sync:\n" + "\n".join(lines))
+        tg_send("HomeShare sync:\n" + "\n".join(lines))
     elif t.startswith("/"):
         tg_send("unknown command - /help")
     elif t:
@@ -1482,7 +1488,7 @@ def tg_handle(text):
             if res.get("trace"):
                 acted = ", ".join(sorted({str(x.get("tool")) for x in res["trace"] if x.get("tool")}))
                 if acted:
-                    reply += f"\n\n🔧 acted: {acted}"
+                    reply += f"\n\nacted: {acted}"
             tg_send(reply[:3500])
         except Exception as e:
             tg_send(f"AI error: {e}")
@@ -2059,7 +2065,7 @@ class Handler(BaseHTTPRequestHandler):
             if b.get("ownerId") is not None: c["ownerId"] = b["ownerId"]
             if b.get("enabled") is not None: c["enabled"] = bool(b["enabled"])
             save_json(TELEGRAM_F, c)
-            if b.get("test"): tg_send("✅ homedashboard bot connected")
+            if b.get("test"): tg_send("homedashboard bot connected")
             return self._send(200, {"ok": True})
 
         return self._send(404, {"error": "not found"})
