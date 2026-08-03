@@ -23,8 +23,8 @@ function Test-Port([int]$port) {
 
 # 1) Launcher/watchdog (8799) — once up it revives the agent, which revives the brain.
 if (-not (Test-Port 8799)) {
-  Start-Process powershell.exe -WindowStyle Hidden -ArgumentList `
-    '-NoProfile','-ExecutionPolicy','Bypass','-WindowStyle','Hidden','-File','C:\HomeDashboard\brain\homedash-launcher.ps1'
+  Start-Process 'wscript.exe' -WindowStyle Hidden -ArgumentList `
+    '"C:\Users\BigBory\AppData\Local\HomeNetDashboard\start-launcher.vbs"'
 }
 
 # 2) Brain (8788) — start directly on the brain host too, so the dashboard is

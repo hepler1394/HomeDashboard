@@ -703,12 +703,106 @@ function Handle-Job($job) {
 
     'updateagent' { return @{ ok=$true; exit=0; stdout='self-update runs automatically on the next poll'; stderr='' } }
 
+    'rename' {
+      # Rename a file/folder: {src, name}
+      $src = [string]$a.src
+      $name = [string]$a.name
+      if (-not $src -or -not $name) { return @{ ok=$false; exit=-1; stdout=''; stderr='src + name required' } }
+      try {
+        $dst = Join-Path (Split-Path $src) $name
+        Rename-Item -LiteralPath $src -NewName $name -Force
+        return @{ ok=$true; exit=0; stdout="renamed to $name"; stderr='' }
+      } catch { return @{ ok=$false; exit=-1; stdout=''; stderr=$_.Exception.Message } }
+    }
+
+    'archive' {
+      # Compress a file/folder to .zip: {path}
+      $path = [string]$a.path
+      if (-not $path -or -not (Test-Path -LiteralPath $path)) { return @{ ok=$false; exit=-1; stdout=''; stderr='path not found' } }
+      try {
+        $zip = "$path.zip"
+        Compress-Archive -Path $path -DestinationPath $zip -Force
+        $size = [math]::Round((Get-Item $zip).Length/1MB, 1)
+        return @{ ok=$true; exit=0; stdout="archived to $zip ($size MB)"; stderr='' }
+      } catch { return @{ ok=$false; exit=-1; stdout=''; stderr=$_.Exception.Message } }
+    }
+
+    'processes' {
+      # List top processes by memory/cpu: {top:10, sort:"mem"}
+      $top = if ($a.top) { [int]$a.top } else { 10 }
+      $sort = if ($a.sort -eq 'cpu') { 'CPU' } else { 'Memory' }
+      try {
+        $procs = Get-Process | Sort-Object $sort -Descending | Select-Object -First $top @{N='CPU%';E={[math]::Round($_.CPU,1)}}, @{N='Mem(MB)';E={[math]::Round($_.WorkingSet/1MB,1)}}, Name
+        return @{ ok=$true; exit=0; stdout=($procs | ConvertTo-Json); stderr='' }
+      } catch { return @{ ok=$false; exit=-1; stdout=''; stderr=$_.Exception.Message } }
+    }
+
+    'disk-cleanup' {
+      # Remove temp files, recycle bin: {targets:"temp,recycle,cache"}
+      $targets = @($a.targets -split ',' | ForEach-Object { $_.Trim().ToLower() })
+      $freed = 0
+      try {
+        if ($targets -contains 'temp') {
+          Get-ChildItem "$env:TEMP" -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
+          $freed += 1
+        }
+        if ($targets -contains 'recycle') {
+          Clear-RecycleBin -Force -ErrorAction SilentlyContinue
+          $freed += 1
+        }
+        return @{ ok=$true; exit=0; stdout="cleaned $freed target(s)"; stderr='' }
+      } catch { return @{ ok=$false; exit=-1; stdout=''; stderr=$_.Exception.Message } }
+    }
+
+    'netstat' {
+      # Network connections and stats
+      try {
+        $conns = netstat -an 2>$null | Select-Object -Skip 4 | Measure-Object
+        $listening = netstat -an 2>$null | Where-Object { $_ -match 'LISTENING' } | Measure-Object
+        return @{ ok=$true; exit=0; stdout="total: $($conns.Count) connections, listening: $($listening.Count)"; stderr='' }
+      } catch { return @{ ok=$false; exit=-1; stdout=''; stderr=$_.Exception.Message } }
+    }
+
+    'gpu-status' {
+      # GPU utilization (if NVIDIA installed)
+      try {
+        $nvidia = Get-Command nvidia-smi -ErrorAction SilentlyContinue
+        if ($nvidia) {
+          $out = & nvidia-smi --query-gpu=utilization.gpu,memory.used,memory.total --format=csv,noheader 2>$null
+          return @{ ok=$true; exit=0; stdout=$out; stderr='' }
+        }
+        return @{ ok=$false; exit=-1; stdout=''; stderr='NVIDIA GPU not found' }
+      } catch { return @{ ok=$false; exit=-1; stdout=''; stderr=$_.Exception.Message } }
+    }
+
+    'battery' {
+      # Battery status (laptops)
+      try {
+        $bat = Get-CimInstance Win32_Battery -ErrorAction SilentlyContinue
+        if ($bat) {
+          return @{ ok=$true; exit=0; stdout="$($bat.EstimatedChargeRemaining)% - $($bat.BatteryStatus)"; stderr='' }
+        }
+        return @{ ok=$false; exit=-1; stdout=''; stderr='no battery (desktop?)' }
+      } catch { return @{ ok=$false; exit=-1; stdout=''; stderr=$_.Exception.Message } }
+    }
+
+    'get-file-hash' {
+      # Hash a file (MD5, SHA256): {path, algo:"SHA256"}
+      $path = [string]$a.path
+      $algo = if ($a.algo) { [string]$a.algo } else { 'SHA256' }
+      if (-not $path -or -not (Test-Path -LiteralPath $path)) { return @{ ok=$false; exit=-1; stdout=''; stderr='path not found' } }
+      try {
+        $hash = Get-FileHash -LiteralPath $path -Algorithm $algo
+        return @{ ok=$true; exit=0; stdout="$($hash.Algorithm): $($hash.Hash)"; stderr='' }
+      } catch { return @{ ok=$false; exit=-1; stdout=''; stderr=$_.Exception.Message } }
+    }
+
     default  { return @{ ok=$false; exit=-1; stdout=''; stderr="unknown job type '$($job.type)'" } }
   }
 }
 
 # ---- Register once, then poll loop -----------------------------------------
-$Caps = @('run','install','pia','play','open','power','copy','move','status','fetch','transfer','backup','applist','updates','updateagent','ollama','search','screenshot','listdir','fsearch','delete','syncthing')
+$Caps = @('run','install','pia','play','open','power','copy','move','status','fetch','transfer','backup','applist','updates','updateagent','ollama','search','screenshot','listdir','fsearch','delete','syncthing','rename','archive','processes','services','disk-cleanup','netstat','gpu-status','battery','reboot-schedule','mount','get-file-hash','compare-files')
 $tsIp = Get-TailscaleIp
 try {
   Post "/register" @{ agent=$Agent; host=$env:COMPUTERNAME; ts_ip=$tsIp; caps=$Caps } | Out-Null

@@ -59,7 +59,7 @@ function Watch-Agent {
   }
   if ($procs.Count -eq 0 -or $hung) {
     if ($hung) { $procs | ForEach-Object { try { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue } catch {} }; Start-Sleep -Seconds 1 }
-    Start-Process powershell.exe -WindowStyle Hidden -ArgumentList "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$AgentPs`""
+    Start-Process wscript.exe -WindowStyle Hidden -ArgumentList '"C:\ProgramData\HomeNetDashboard\agent\start-agent.vbs"'
   }
 }
 

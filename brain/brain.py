@@ -557,10 +557,19 @@ Available tools:
 - copy_file agent         -> args:{"src":"Z:\\\\a.txt","dst":"D:\\\\b"} (copy on that PC)
 - move_file agent         -> args:{"src":"...","dst":"..."}   (move/rename on that PC)
 - delete_file agent       -> args:{"path":"Z:\\\\old.txt"} (DESTRUCTIVE - only when user clearly asked)
-- request_media           -> args:{"title":"Toxic Love Story","year":"2026"} (request movie/show from PlexClaw)
+- rename_file agent       -> args:{"src":"Z:\\\\old.txt","name":"new.txt"} (rename file/folder on PC)
+- archive agent           -> args:{"path":"Z:\\\\folder"}  (compress folder to .zip)
+- processes agent         -> args:{"top":10,"sort":"mem"} (top CPU/memory processes)
+- disk_cleanup agent      -> args:{"targets":"temp,recycle"} (free up disk space)
+- netstat agent           -> args:{}                       (show network connections)
+- gpu_status agent        -> args:{}                       (show GPU utilization)
+- battery agent           -> args:{}                       (laptop battery status)
+- get_hash agent          -> args:{"path":"file.zip","algo":"SHA256"} (file hash)
+- request_media           -> args:{"title":"Toxic Love Story","year":"2026"} (request movie/show)
 - plex_search             -> args:{"q":"Matrix"}          (search Plex library)
-- plex_status             -> args:{}                      (show watch stats, recently added)
-Cortex integration: dashboard now has feature parity with mainpc Cortex assistant - can launch apps, manage files, control PCs, and request media.
+- plex_status             -> args:{}                      (watch stats, recent adds)
+- fleet_search            -> args:{"q":"tax"}             (search all PCs for files)
+Cortex integration COMPLETE: dashboard now has FULL feature parity with Cortex - app launching, file ops (move/copy/rename/archive/hash), system control (processes/network/GPU/battery), media management, and fleet-wide search.
 After a tool runs you get a "tool result" message; then call another tool or give the final answer in plain English.
 When you have the answer, reply normally (no json). Prefer exact agent names from list_devices."""
 
@@ -796,13 +805,39 @@ def run_ai_tool(tool, agent, args):
             return get_job(int(args.get("id", 0) or 0)) or {"error": "no such job"}
         except Exception:
             return {"error": "bad job id"}
+    if tool == "fleet_search":
+        q = str(args.get("q", "")).strip()
+        if len(q) < 2:
+            return {"error": "query too short (2+ chars)"}
+        audit("ai_search", tool="fleet_search", query=q)
+        return fleet_search(q, max_per=30)
+
     if not agent:
         return {"error": "agent required"}
+
     fsmap = {"listdir": "list", "search_files": "search", "copy_file": "copy",
              "move_file": "move", "delete_file": "delete"}
     if tool in fsmap:
         audit("ai_fs", tool=tool, agent=agent, args=args)
         return fs_op(agent, fsmap[tool], args or {})
+
+    # New system tools
+    sysmap = {"rename_file": "rename", "archive": "archive", "processes": "processes",
+              "disk_cleanup": "disk-cleanup", "netstat": "netstat", "gpu_status": "gpu-status",
+              "battery": "battery", "get_hash": "get-file-hash"}
+    if tool in sysmap:
+        jtype = sysmap[tool]
+        real = resolve_agent(agent)
+        if not real:
+            return {"error": f"no PC named '{agent}'"}
+        dev = next((d for d in list_devices() if d["agent"] == real), None)
+        if dev and not dev["online"]:
+            return {"error": f"{real} is offline"}
+        audit("ai_sys", tool=tool, agent=agent, args=args)
+        jid = enqueue(real, jtype, args, by="ai")
+        j = wait_for_job(jid, timeout=45)
+        return {"agent": real, "job": jid, "status": j["status"] if j else "timeout",
+                "result": (j["result"] if j else None)}
     typ = {"status": "status", "install": "install", "pia": "pia", "play": "play",
            "open": "open", "run": "run", "power": "power"}.get(tool)
     if not typ:
@@ -1433,26 +1468,31 @@ def tg_handle(text):
     parts = t.split()
     cmd = parts[0].lower() if parts else ""
     if cmd in ("/start", "/help", "help"):
-        tg_send("Home Dashboard — Claude at the helm (Cortex-level capability)\n\n"
-                "Most natural: just tell me what you need.\n\n"
+        tg_send("Home Dashboard — FULL Cortex Capability\n\n"
                 "Apps & Control:\n"
-                "- open Claude on mainpc\n"
-                "- open code on laptop\n"
-                "- restart mainpc\n"
-                "- find my taxes on mainpc\n\n"
+                "- open Claude/code/discord on mainpc\n"
+                "- restart/sleep mainpc\n"
+                "- top processes on laptop\n"
+                "- GPU status\n"
+                "- network connections\n\n"
+                "Files:\n"
+                "- find my taxes on mainpc\n"
+                "- rename file.txt to new.txt on laptop\n"
+                "- compress this folder on mainpc\n"
+                "- get hash of file.zip on plexserver\n"
+                "- search all PCs for *.mp4\n\n"
                 "Media:\n"
                 "- request A Toxic Love Story 2026\n"
                 "- search Plex for Matrix\n"
                 "- play The Matrix\n"
                 "- what's on Plex\n\n"
-                "Status:\n"
+                "System:\n"
                 "- how much disk is left\n"
+                "- clean up temp files\n"
+                "- battery status on laptop\n"
                 "- what's the status\n"
                 "- is internet up\n\n"
-                "Slash commands:\n"
-                "/devices /status /disk /sync /screenshot /power /wake\n"
-                "/pia /install /play /request\n\n"
-                "Default: natural language works best.")
+                "Use natural language for everything.")
     elif cmd == "/devices":
         ds = list_devices()
         tg_send("\n".join(f"{'[online]' if d['online'] else '[offline]'} {d['host']} ({d['agent']}) cpu {d['stats'].get('cpu','?')}% pia {d['stats'].get('pia','?')}" for d in ds) or "no devices")
