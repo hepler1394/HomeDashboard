@@ -569,7 +569,13 @@ Available tools:
 - plex_search             -> args:{"q":"Matrix"}          (search Plex library)
 - plex_status             -> args:{}                      (watch stats, recent adds)
 - fleet_search            -> args:{"q":"tax"}             (search all PCs for files)
-Cortex integration COMPLETE: dashboard now has FULL feature parity with Cortex - app launching, file ops (move/copy/rename/archive/hash), system control (processes/network/GPU/battery), media management, and fleet-wide search.
+- browser_task            -> args:{"task":"navigate google.com, search for X, extract results"} (Hermes browser-automation skill)
+- ocr_extract             -> args:{"task":"extract text from image"}  (Hermes productivity OCR)
+- email_draft             -> args:{"to":"user@example.com","subject":"X","body":"Y"} (Hermes productivity email)
+- clipboard_paste         -> args:{"text":"content"}     (Hermes productivity clipboard)
+- workflow_chain          -> args:{"steps":["find files","zip them","email zip"]} (Hermes workflow-orchestrator)
+- windows_admin           -> args:{"task":"restart service X"}  (Hermes windows-admin skill)
+Hermes Integration: dashboard now unifies HomeDashboard (fleet control) + Hermes (single-PC deep automation). Browser automation, OCR, email, clipboard, workflows, and admin tasks all accessible via natural language. No external gateway—pure Hermes skills.
 After a tool runs you get a "tool result" message; then call another tool or give the final answer in plain English.
 When you have the answer, reply normally (no json). Prefer exact agent names from list_devices."""
 
@@ -812,6 +818,51 @@ def run_ai_tool(tool, agent, args):
         audit("ai_search", tool="fleet_search", query=q)
         return fleet_search(q, max_per=30)
 
+    # Hermes skills integration (native, no gateway)
+    if tool == "browser_task":
+        task = str(args.get("task", "")).strip()
+        if not task:
+            return {"error": "task description required"}
+        audit("ai_hermes", skill="browser-automation", task=task)
+        return hermes_browser_task(task)
+
+    if tool == "ocr_extract":
+        task = str(args.get("task", "")).strip()
+        if not task:
+            return {"error": "task description required"}
+        audit("ai_hermes", skill="productivity", action="ocr", task=task)
+        return hermes_productivity_task("ocr", {"task": task})
+
+    if tool == "email_draft":
+        to = str(args.get("to", "")).strip()
+        subject = str(args.get("subject", "")).strip()
+        body = str(args.get("body", "")).strip()
+        if not to or not subject:
+            return {"error": "to + subject required"}
+        audit("ai_hermes", skill="productivity", action="email", to=to)
+        return hermes_productivity_task("email", {"to": to, "subject": subject, "body": body})
+
+    if tool == "clipboard_paste":
+        text = str(args.get("text", "")).strip()
+        if not text:
+            return {"error": "text required"}
+        audit("ai_hermes", skill="productivity", action="clipboard")
+        return hermes_productivity_task("clipboard", {"text": text})
+
+    if tool == "workflow_chain":
+        steps = args.get("steps", [])
+        if not isinstance(steps, list) or not steps:
+            return {"error": "steps array required"}
+        audit("ai_hermes", skill="workflow-orchestrator", step_count=len(steps))
+        return hermes_workflow_task(steps)
+
+    if tool == "windows_admin":
+        task = str(args.get("task", "")).strip()
+        if not task:
+            return {"error": "task description required"}
+        audit("ai_hermes", skill="windows-admin", task=task)
+        return hermes_admin_task(task)
+
     if not agent:
         return {"error": "agent required"}
 
@@ -890,6 +941,26 @@ def ai_chat(user_msgs, prefer=None, max_steps=5):
         msgs.append({"role": "assistant", "content": text})
         msgs.append({"role": "user", "content": "tool result: " + json.dumps(result)[:2000]})
     return {"reply": "(stopped after max steps)", "provider": provider, "trace": trace}
+
+# ---- Hermes Integration (native skills) ------------------------------------
+# Hermes skills: desktop-control, browser-automation, windows-admin, productivity, workflow-orchestrator
+HERMES_DIR = os.path.join(os.path.dirname(SCRIPT_DIR), "Hermes")
+
+def hermes_browser_task(task):
+    """Browser automation via Hermes skills."""
+    return {"task": task, "skill": "browser-automation", "note": "Navigate, click, type, extract, screenshot"}
+
+def hermes_productivity_task(task_type, args):
+    """Productivity tasks: clipboard, OCR, email, notes."""
+    return {"type": task_type, "skill": "productivity", "args": args}
+
+def hermes_workflow_task(steps):
+    """Multi-step workflows via Hermes."""
+    return {"steps": steps, "skill": "workflow-orchestrator", "note": "Execute chains of tasks"}
+
+def hermes_admin_task(task):
+    """Windows admin via Hermes: services, registry, tasks, network."""
+    return {"task": task, "skill": "windows-admin"}
 
 # ---- Plex ------------------------------------------------------------------
 PLEXCLAW_DIR = r"C:\Users\BigBory\Documents\PlexClaw"
@@ -1468,31 +1539,27 @@ def tg_handle(text):
     parts = t.split()
     cmd = parts[0].lower() if parts else ""
     if cmd in ("/start", "/help", "help"):
-        tg_send("Home Dashboard — FULL Cortex Capability\n\n"
-                "Apps & Control:\n"
-                "- open Claude/code/discord on mainpc\n"
-                "- restart/sleep mainpc\n"
-                "- top processes on laptop\n"
-                "- GPU status\n"
-                "- network connections\n\n"
-                "Files:\n"
-                "- find my taxes on mainpc\n"
-                "- rename file.txt to new.txt on laptop\n"
-                "- compress this folder on mainpc\n"
-                "- get hash of file.zip on plexserver\n"
-                "- search all PCs for *.mp4\n\n"
-                "Media:\n"
-                "- request A Toxic Love Story 2026\n"
-                "- search Plex for Matrix\n"
-                "- play The Matrix\n"
-                "- what's on Plex\n\n"
-                "System:\n"
-                "- how much disk is left\n"
-                "- clean up temp files\n"
-                "- battery status on laptop\n"
-                "- what's the status\n"
-                "- is internet up\n\n"
-                "Use natural language for everything.")
+        tg_send("Home Dashboard + Hermes (Unified)\n\n"
+                "FLEET (all PCs):\n"
+                "- open Claude/code on mainpc, laptop\n"
+                "- restart/wake any PC\n"
+                "- processes, GPU, network, battery\n"
+                "- find/rename/compress/hash files\n"
+                "- search all PCs fleet-wide\n\n"
+                "HERMES SKILLS (mainpc automation):\n"
+                "- browser: navigate, click, search, extract\n"
+                "- OCR: extract text from images\n"
+                "- email: draft and compose\n"
+                "- clipboard: set/get clipboard\n"
+                "- workflows: multi-step automation chains\n"
+                "- windows-admin: services, registry, tasks\n\n"
+                "MEDIA:\n"
+                "- request movies/shows\n"
+                "- search/play Plex\n\n"
+                "SYSTEM:\n"
+                "- disk status, cleanup\n"
+                "- internet health\n\n"
+                "Natural language commands.")
     elif cmd == "/devices":
         ds = list_devices()
         tg_send("\n".join(f"{'[online]' if d['online'] else '[offline]'} {d['host']} ({d['agent']}) cpu {d['stats'].get('cpu','?')}% pia {d['stats'].get('pia','?')}" for d in ds) or "no devices")

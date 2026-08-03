@@ -802,7 +802,7 @@ function Handle-Job($job) {
 }
 
 # ---- Register once, then poll loop -----------------------------------------
-$Caps = @('run','install','pia','play','open','power','copy','move','status','fetch','transfer','backup','applist','updates','updateagent','ollama','search','screenshot','listdir','fsearch','delete','syncthing','rename','archive','processes','services','disk-cleanup','netstat','gpu-status','battery','reboot-schedule','mount','get-file-hash','compare-files')
+$Caps = @('run','install','pia','play','open','power','copy','move','status','fetch','transfer','backup','applist','updates','updateagent','ollama','search','screenshot','listdir','fsearch','delete','syncthing','rename','archive','processes','services','disk-cleanup','netstat','gpu-status','battery','reboot-schedule','mount','get-file-hash','compare-files','hermes-browser','hermes-ocr','hermes-email','hermes-clipboard','hermes-workflow','hermes-admin')
 $tsIp = Get-TailscaleIp
 try {
   Post "/register" @{ agent=$Agent; host=$env:COMPUTERNAME; ts_ip=$tsIp; caps=$Caps } | Out-Null
