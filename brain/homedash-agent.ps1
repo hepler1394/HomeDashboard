@@ -192,7 +192,7 @@ function Start-Launcher {
   # Keep the launcher file fresh from the brain, then start it if the port is dead.
   try { Invoke-WebRequest "$Brain/launcher" -UseBasicParsing -OutFile $LauncherPs -TimeoutSec 15 } catch {}
   if (Test-Path $LauncherPs) {
-    Start-Process powershell.exe -WindowStyle Hidden -ArgumentList "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$LauncherPs`""
+    Start-Process wscript.exe -WindowStyle Hidden -ArgumentList '"C:\Users\BigBory\AppData\Local\HomeNetDashboard\start-launcher.vbs"'
   }
 }
 
@@ -356,9 +356,45 @@ function Handle-Job($job) {
     }
 
     'open' {
+      # Resolve app by name first, fall back to path
+      $app = [string]$a.app
       $path = [string]$a.path
-      if ($path -and (Test-Path -LiteralPath $path)) { Start-Process explorer.exe $path; return @{ ok=$true; exit=0; stdout="opened $path"; stderr='' } }
-      return @{ ok=$false; exit=-1; stdout=''; stderr='path not found' }
+
+      $appPaths = @{
+        'claude'        = @("$env:LOCALAPPDATA\Programs\Claude\Claude.exe", "C:\Program Files\Claude\Claude.exe")
+        'code'          = @("$env:LOCALAPPDATA\Programs\Microsoft VS Code\Code.exe", "C:\Program Files\Microsoft VS Code\Code.exe")
+        'vscode'        = @("$env:LOCALAPPDATA\Programs\Microsoft VS Code\Code.exe", "C:\Program Files\Microsoft VS Code\Code.exe")
+        'discord'       = @("$env:LOCALAPPDATA\Discord\app-*\Discord.exe", "$env:ProgramFiles\Discord\Discord.exe")
+        'chrome'        = @("C:\Program Files\Google\Chrome\Application\chrome.exe", "$env:ProgramFiles (x86)\Google\Chrome\Application\chrome.exe")
+        'vlc'           = @("$env:ProgramFiles\VideoLAN\VLC\vlc.exe", "$env:ProgramFiles (x86)\VideoLAN\VLC\vlc.exe")
+        'notepad'       = @("C:\Windows\notepad.exe")
+        'explorer'      = @("C:\Windows\explorer.exe")
+      }
+
+      # Try app name resolution first
+      if ($app) {
+        $appLower = $app.ToLower()
+        if ($appPaths.ContainsKey($appLower)) {
+          foreach ($p in $appPaths[$appLower]) {
+            $exe = Get-ChildItem -Path $p -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($exe) { Start-Process $exe.FullName; return @{ ok=$true; exit=0; stdout="opened $app"; stderr='' } }
+          }
+          return @{ ok=$false; exit=-1; stdout=''; stderr="$app not found on this PC" }
+        }
+        # Treat unrecognized app name as a direct exe name search
+        try {
+          $cmd = Get-Command $appLower -ErrorAction SilentlyContinue
+          if ($cmd) { Start-Process $cmd.Source; return @{ ok=$true; exit=0; stdout="opened $app"; stderr='' } }
+        } catch {}
+      }
+
+      # Fall back to path-based open
+      if ($path -and (Test-Path -LiteralPath $path)) {
+        Start-Process explorer.exe -ArgumentList "`"$path`"";
+        return @{ ok=$true; exit=0; stdout="opened $path"; stderr='' }
+      }
+
+      return @{ ok=$false; exit=-1; stdout=''; stderr='no app name or path given' }
     }
 
     'power' {
