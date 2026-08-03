@@ -534,7 +534,7 @@ def ai_complete(msgs, prefer=None, max_tokens=700):
     return None
 
 # ---- AI command center: tool-calling loop (provider-agnostic ReAct) --------
-AI_TOOLS_DOC = """You are the assistant for a Home Network Dashboard that controls the owner's own home PCs.
+AI_TOOLS_DOC = """You are the assistant for a Home Network Dashboard that controls the owner's own home PCs and media library.
 You can take actions by replying with ONE fenced json tool call and nothing else:
 ```json
 {"tool":"<name>","agent":"<pc>","args":{...}}
@@ -546,20 +546,23 @@ Available tools:
 - open    agent path      -> args:{"path":"D:\\\\"}       (open folder in explorer)
 - install agent id        -> args:{"id":"VideoLAN.VLC"}   (install app via winget)
 - pia     agent action    -> args:{"action":"on|off|status"}
-- play    agent url        -> args:{"url":"http://..."}
-- run     agent command    -> args:{"cmd":"ipconfig"}     (allow-listed on agent)
-- power   agent action    -> args:{"action":"restart"}    (DESTRUCTIVE - only if the user clearly asked)
-- history agent           -> args:{}                      (24h cpu/mem/disk trend for one PC)
-- audit                   -> args:{"n":15}                (recent brain audit log entries)
-- job_status              -> args:{"id":123}              (check one job's result)
-- listdir agent           -> args:{"path":"Z:\\\\Movies"}  (list a folder on that PC - works for cloud mounts like Google Drive)
-- search_files agent      -> args:{"root":"Z:\\\\","q":"tax"} (find files by name under a folder)
-- copy_file agent         -> args:{"src":"Z:\\\\a.txt","dst":"D:\\\\b"} (copy file/folder on that PC)
+- play    agent url        -> args:{"url":"http://..."}   (queue in VLC on that PC)
+- run     agent command    -> args:{"cmd":"ipconfig"}     (allow-listed diagnostics)
+- power   agent action    -> args:{"action":"restart"}    (DESTRUCTIVE - only if user clearly asked)
+- history agent           -> args:{}                      (24h cpu/mem/disk trend)
+- audit                   -> args:{"n":15}                (recent brain audit log)
+- job_status              -> args:{"id":123}              (check job result)
+- listdir agent           -> args:{"path":"Z:\\\\Movies"}  (list folder on PC - works for cloud mounts)
+- search_files agent      -> args:{"root":"Z:\\\\","q":"tax"} (find files by name)
+- copy_file agent         -> args:{"src":"Z:\\\\a.txt","dst":"D:\\\\b"} (copy on that PC)
 - move_file agent         -> args:{"src":"...","dst":"..."}   (move/rename on that PC)
-- delete_file agent       -> args:{"path":"Z:\\\\old.txt"} (DESTRUCTIVE - only when the user clearly asked to delete)
-A live fleet snapshot is included below - answer status questions from it directly instead of calling tools.
-After a tool runs you get a "tool result" message; then either call another tool or give the final answer in plain English.
-When you have the answer for the user, reply normally (no json). Prefer the exact agent names from list_devices."""
+- delete_file agent       -> args:{"path":"Z:\\\\old.txt"} (DESTRUCTIVE - only when user clearly asked)
+- request_media           -> args:{"title":"Toxic Love Story","year":"2026"} (request movie/show from PlexClaw)
+- plex_search             -> args:{"q":"Matrix"}          (search Plex library)
+- plex_status             -> args:{}                      (show watch stats, recently added)
+Cortex integration: dashboard now has feature parity with mainpc Cortex assistant - can launch apps, manage files, control PCs, and request media.
+After a tool runs you get a "tool result" message; then call another tool or give the final answer in plain English.
+When you have the answer, reply normally (no json). Prefer exact agent names from list_devices."""
 
 def resolve_agent(name):
     """Map whatever the model calls a PC (agent id, hostname, any case) to the
@@ -726,6 +729,42 @@ def fs_op(agent, op, args):
     return {"ok": True, "msg": out or "done"}
 
 def run_ai_tool(tool, agent, args):
+    # Media tools (no agent needed)
+    if tool == "request_media":
+        title = str(args.get("title", "")).strip()
+        year = str(args.get("year", "")).strip()
+        if not title:
+            return {"error": "title required"}
+        try:
+            res = claw_request(title, year, "movie", by="ai_request")
+            return {"status": res.get("status"), "title": res.get("title", title),
+                    "quality": res.get("quality"), "size_gb": res.get("size_gb"),
+                    "message": res.get("message")}
+        except Exception as e:
+            return {"error": f"request failed: {str(e)[:100]}"}
+
+    if tool == "plex_search":
+        q = str(args.get("q", "")).strip()
+        if len(q) < 2:
+            return {"error": "search query too short"}
+        try:
+            hits = plex_search(q, limit=20)
+            return {"results": hits, "count": len(hits)}
+        except Exception as e:
+            return {"error": f"search failed: {str(e)[:100]}"}
+
+    if tool == "plex_status":
+        try:
+            st = claw_get("/status")
+            if not st:
+                return {"error": "PlexClaw not running"}
+            return {"library_items": st.get("watch", {}).get("library_items"),
+                    "never_watched": st.get("watch", {}).get("never_watched"),
+                    "coverage_pct": st.get("watch", {}).get("coverage_pct"),
+                    "recent": st.get("recent", [])[:5]}
+        except Exception as e:
+            return {"error": f"status check failed: {str(e)[:100]}"}
+
     if tool == "list_devices":
         return {"devices": [{"agent": d["agent"], "host": d["host"], "online": d["online"],
                              "pia": d["stats"].get("pia"), "cpu": d["stats"].get("cpu"),
@@ -1394,28 +1433,26 @@ def tg_handle(text):
     parts = t.split()
     cmd = parts[0].lower() if parts else ""
     if cmd in ("/start", "/help", "help"):
-        tg_send("Home Dashboard — Claude at the helm\n\n"
-                "Most natural: just tell me what you need.\n"
+        tg_send("Home Dashboard — Claude at the helm (Cortex-level capability)\n\n"
+                "Most natural: just tell me what you need.\n\n"
+                "Apps & Control:\n"
                 "- open Claude on mainpc\n"
-                "- how much disk is left\n"
-                "- work on powerful-websites on laptop\n"
+                "- open code on laptop\n"
+                "- restart mainpc\n"
+                "- find my taxes on mainpc\n\n"
+                "Media:\n"
+                "- request A Toxic Love Story 2026\n"
+                "- search Plex for Matrix\n"
                 "- play The Matrix\n"
-                "- find my taxes on mainpc\n"
-                "- is internet up\n"
-                "- restart mainpc\n\n"
-                "Or use slash commands:\n"
-                "/devices — PCs + status\n"
-                "/status <pc>\n"
-                "/disk — drives over 80%\n"
-                "/sync [pc] — HomeShare\n"
-                "/screenshot <pc>\n"
-                "/power <pc> restart|sleep|shutdown\n"
-                "/wake <pc>\n"
-                "/pia <pc> on|off|status\n"
-                "/install <pc> <app-id>\n"
-                "/play <pc> <plex-id>\n"
-                "/request <movie> [year]\n\n"
-                "Default: I handle what you say naturally.")
+                "- what's on Plex\n\n"
+                "Status:\n"
+                "- how much disk is left\n"
+                "- what's the status\n"
+                "- is internet up\n\n"
+                "Slash commands:\n"
+                "/devices /status /disk /sync /screenshot /power /wake\n"
+                "/pia /install /play /request\n\n"
+                "Default: natural language works best.")
     elif cmd == "/devices":
         ds = list_devices()
         tg_send("\n".join(f"{'[online]' if d['online'] else '[offline]'} {d['host']} ({d['agent']}) cpu {d['stats'].get('cpu','?')}% pia {d['stats'].get('pia','?')}" for d in ds) or "no devices")
