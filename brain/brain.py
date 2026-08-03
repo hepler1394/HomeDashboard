@@ -542,10 +542,11 @@ You can take actions by replying with ONE fenced json tool call and nothing else
 Available tools:
 - list_devices            -> args:{}                      (see all PCs + live stats)
 - status  agent           -> args:{}                      (one PC's stats)
+- open    agent app       -> args:{"app":"claude"}        (launch app: claude, code, discord, vlc, chrome, explorer, etc)
+- open    agent path      -> args:{"path":"D:\\\\"}       (open folder in explorer)
 - install agent id        -> args:{"id":"VideoLAN.VLC"}   (install app via winget)
 - pia     agent action    -> args:{"action":"on|off|status"}
 - play    agent url        -> args:{"url":"http://..."}
-- open    agent path       -> args:{"path":"D:\\\\"}
 - run     agent command    -> args:{"cmd":"ipconfig"}     (allow-listed on agent)
 - power   agent action    -> args:{"action":"restart"}    (DESTRUCTIVE - only if the user clearly asked)
 - history agent           -> args:{}                      (24h cpu/mem/disk trend for one PC)
@@ -578,6 +579,27 @@ def resolve_agent(name):
         if n in d["agent"].lower() or n in (d["host"] or "").lower():
             return d["agent"]
     return None
+
+def resolve_app(app_name):
+    """Map friendly app names to agent job args.
+    Returns {"app": name} for the 'open' job."""
+    if not app_name:
+        return None
+    a = str(app_name).strip().lower()
+    # Map common names to agent app resolution keys
+    app_map = {
+        "claude": "claude",
+        "claude code": "claude",
+        "code": "code",
+        "vscode": "code",
+        "vs code": "code",
+        "discord": "discord",
+        "chrome": "chrome",
+        "vlc": "vlc",
+        "notepad": "notepad",
+        "explorer": "explorer",
+    }
+    return {"app": app_map.get(a, a)}
 
 # ---- Filesystem ops (Drive browser + AI file tools) -------------------------
 _LOCAL_HOST = socket.gethostname().lower()
@@ -753,7 +775,15 @@ def run_ai_tool(tool, agent, args):
     dev = next((d for d in list_devices() if d["agent"] == real), None)
     if dev and not dev["online"]:
         return {"error": f"{real} is offline right now, so the job can't run"}
-    jid = enqueue(real, typ, args, by="ai")
+
+    # Special handling for 'open' tool: resolve app names to args
+    job_args = args
+    if typ == "open" and args.get("app"):
+        app_args = resolve_app(args["app"])
+        if app_args:
+            job_args = app_args
+
+    jid = enqueue(real, typ, job_args, by="ai")
     j = wait_for_job(jid, timeout=45)
     return {"agent": real, "job": jid, "status": j["status"] if j else "timeout",
             "result": (j["result"] if j else None)}
