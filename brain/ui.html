@@ -502,8 +502,11 @@ function renderYTG(){
 // own nginx at :2026. It's a full Next.js app (/_next, /api …) so it can't be
 // subpath-proxied through the brain like YT Grabber — the tab embeds :2026 on
 // the same host, reachable fleet-wide over Tailscale.
+// Embed /workspace, not /: "/" is DeerFlow's own marketing landing page, which
+// looks like the public deerflow.tech site and confuses the tab. /workspace is
+// the actual app, and it redirects to /setup (no admin yet) or /login as needed.
 function renderDeerFlow(){
-  $('#view').innerHTML=`<iframe src="http://${location.hostname}:2026" title="DeerFlow" allow="clipboard-write; fullscreen"
+  $('#view').innerHTML=`<iframe src="http://${location.hostname}:2026/workspace" title="DeerFlow" allow="clipboard-write; fullscreen"
     style="width:100%;height:calc(100vh - 96px);min-height:520px;border:1px solid var(--line);border-radius:14px;background:#0b0f17;box-shadow:var(--shadow)"></iframe>`;
 }
 /* ---------- Fleet ---------- */
