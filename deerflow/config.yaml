@@ -116,14 +116,34 @@ models:
     api_key: $ANTHROPIC_API_KEY
     max_tokens: 16000
     max_retries: 2
-  - name: gemini-pro
-    display_name: Gemini 3 Pro
-    use: langchain_google_genai:ChatGoogleGenerativeAI
-    model: gemini-3-pro
-    api_key: $GEMINI_API_KEY
-    max_tokens: 16000
+  # Gemini is DISABLED: the GEMINI_API_KEY copied from the Windows user
+  # environment is rejected by Google with API_KEY_INVALID, so no model id will
+  # work until a valid key is issued at aistudio.google.com. (The model id below
+  # was also wrong — gemini-3-pro returned INVALID_ARGUMENT — so confirm the
+  # correct id against the models list once a working key exists.) Leaving this
+  # enabled only puts a model in the picker that fails at call time.
+  # - name: gemini-pro
+  #   display_name: Gemini 3 Pro
+  #   use: langchain_google_genai:ChatGoogleGenerativeAI
+  #   model: gemini-3-pro
+  #   api_key: $GEMINI_API_KEY
+  #   max_tokens: 16000
+  #   max_retries: 2
+  #   supports_vision: true
+
+  # Zero-cost route through OpenRouter: models with a :free suffix consume no
+  # credits, which matters because the account balance is nearly empty. 550B
+  # with a 1M context, verified working 2026-08-08. Free tiers are rate-limited
+  # and occasionally return 429 "temporarily unavailable" — fine as a fallback,
+  # not something to depend on for a long agent run.
+  - name: openrouter-free
+    display_name: Nemotron 3 Ultra (OpenRouter, free)
+    use: langchain_openai:ChatOpenAI
+    model: nvidia/nemotron-3-ultra-550b-a55b:free
+    api_key: $OPENROUTER_API_KEY
+    base_url: https://openrouter.ai/api/v1
+    max_tokens: 4096
     max_retries: 2
-    supports_vision: true
   # OpenAI and OpenRouter: ready to go, commented out ONLY because their keys are
   # not in .env yet. DeerFlow resolves every $VAR when it loads this file and
   # raises at STARTUP if one is missing — an unset key crash-loops the gateway,
@@ -142,14 +162,21 @@ models:
   #
   # OpenRouter is OpenAI-compatible: same class, different base_url. Change
   # `model` to any slug from openrouter.ai/models to reach it through here.
-  # - name: openrouter
-  #   display_name: OpenRouter
-  #   use: langchain_openai:ChatOpenAI
-  #   model: anthropic/claude-sonnet-5
-  #   api_key: $OPENROUTER_API_KEY
-  #   base_url: https://openrouter.ai/api/v1
-  #   max_tokens: 16000
-  #   max_retries: 2
+  # Enabled 2026-08-08 once the key was in .env.
+  # max_tokens is 1024, not the 16000 used elsewhere, because OpenRouter refuses
+  # a request whose max_tokens exceeds what the remaining balance can cover:
+  # "requires more credits, or fewer max_tokens ... can only afford 1792" (402).
+  # The cap is balance-derived, so RAISE THIS once credits are topped up at
+  # openrouter.ai/settings/credits — otherwise replies stay clipped at ~1k
+  # tokens even with a healthy balance.
+  - name: openrouter
+    display_name: OpenRouter (Claude Sonnet 5)
+    use: langchain_openai:ChatOpenAI
+    model: anthropic/claude-sonnet-5
+    api_key: $OPENROUTER_API_KEY
+    base_url: https://openrouter.ai/api/v1
+    max_tokens: 1024
+    max_retries: 2
   #
   # Sakana AI (Tokyo) — Fugu is a multi-LLM orchestrator behind one
   # OpenAI-compatible API, so it uses the same class again. Swap `model` to
