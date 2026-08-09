@@ -742,13 +742,30 @@ tool_groups:
 
 tools:
   # Web search tool (Brave Search API — key in .env as BRAVE_SEARCH_API_KEY)
+  # Search runs through DDGS, not Brave. The Brave key on this box is a free
+  # plan capped at ONE request per second, and the search tool has no backoff:
+  # on a 429 the agent retries until it exhausts its 100-step graph budget and
+  # the whole run dies with GraphRecursionError. That happened on a real
+  # research run 2026-08-08. DDGS needs no API key and imposes no per-second
+  # cap, so the failure mode disappears rather than being tuned around.
+  #
+  # `backend: auto` lets DDGS fall back across providers, so one upstream being
+  # unhappy degrades result quality instead of killing the run.
   - name: web_search
     group: web
-    use: deerflow.community.brave.tools:web_search_tool
+    use: deerflow.community.ddg_search.tools:web_search_tool
     max_results: 5
-    # backend: auto          # DDGS backend(s): auto, duckduckgo, brave, wikipedia, etc.
-    # region: wt-wt          # wt-wt is normalized for Wikipedia when backend includes auto/all/wikipedia.
-    # safesearch: moderate   # on, moderate, off
+    backend: auto            # DDGS backend(s): auto, duckduckgo, brave, wikipedia, etc.
+    region: wt-wt
+    safesearch: moderate
+
+  # Brave, kept for reference. Restoring it means re-accepting the 1 req/sec cap
+  # unless the plan is upgraded — the key still works and quota is barely used
+  # (751/2000 as of 2026-08-08), it is purely the rate limit that hurts.
+  # - name: web_search
+  #   group: web
+  #   use: deerflow.community.brave.tools:web_search_tool
+  #   max_results: 5
 
   # Web search tool (uses SearXNG, self-hosted, no API key required)
   # SearXNG is a free internet metasearch engine which aggregates results from
@@ -1074,6 +1091,17 @@ tools:
   - name: bash
     group: bash
     use: deerflow.sandbox.tools:bash_tool
+
+  # Narrow fleet capability instead of a shell. LocalSandboxProvider means the
+  # `bash` tool above would be an unsandboxed shell in the gateway container --
+  # which the brain treats as loopback and therefore trusts with the whole
+  # fleet -- so DeerFlow withholds it unless sandbox.allow_host_bash is set.
+  # Rather than granting that, this exposes exactly one verb: render markdown
+  # to .docx and place it on a named PC, verifying arrival. It cannot run
+  # commands or choose arbitrary URLs. Code is mounted from ../custom_tools.
+  - name: deliver_document_to_pc
+    group: file:write
+    use: custom_tools.fleet:deliver_document_to_pc
 
 # ============================================================================
 # Tool Search Configuration (Deferred Tool Loading)
@@ -1559,10 +1587,16 @@ skills:
   # Uncomment to customize:
   # path: /absolute/path/to/custom/skills
 
-  # Path where skills are mounted in the sandbox container
-  # This is used by the agent to access skills in both local and Docker sandbox
-  # Default: /mnt/skills
-  container_path: /mnt/skills
+  # Path where skills are mounted in the sandbox container.
+  #
+  # MUST be /app/skills here, not the /mnt/skills default. This deployment uses
+  # LocalSandboxProvider, so the "sandbox" is the gateway container itself, and
+  # compose bind-mounts ../skills to /app/skills. The local sandbox's virtual
+  # path translation only covers the /mnt/user-data prefixes — /mnt/skills is
+  # never mapped, so with the default the agent runs `ls /mnt/skills`, gets "No
+  # such file or directory", concludes its skills are fictional, and refuses the
+  # task outright. Observed 2026-08-08.
+  container_path: /app/skills
 
   # Deferred skill discovery (default: false)
   # When enabled, only skill names appear in the system prompt (<skill_index>).

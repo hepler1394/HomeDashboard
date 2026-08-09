@@ -32,6 +32,19 @@ their Tailscale addresses as well. The dashboard agent on PlexServer reports its
 own IP as a `172.29.x.x` WSL virtual adapter address — that is not the address to
 use; use `192.168.1.174`.
 
+**Windows account names differ per machine — do not assume.** Verified 2026-08-08:
+
+| Host | Account | Desktop |
+| --- | --- | --- |
+| `MAINPC` | `Cory` | `C:\Users\Cory\Desktop` (not OneDrive-redirected) |
+| `PLEXSERVER` | `BigBory` | `C:\Users\BigBory\Desktop` |
+
+`MYMEDIACENTER` and `LAPTOP` accounts are not yet recorded — list `C:\Users` on
+them with a `listdir` job before writing a path. Guessing the PlexServer account
+name for another machine is the specific mistake to avoid; MainPC is `Cory`, not
+`BigBory`. `/devices` does not report the logged-in user, so this table is the
+only source.
+
 ## The HomeDashboard brain
 
 The dashboard is a Python service ("the brain") on PlexServer port **8788**.

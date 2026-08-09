@@ -507,7 +507,7 @@ function renderYTG(){
 // the actual app, and it redirects to /setup (no admin yet) or /login as needed.
 function renderDeerFlow(){
   const base=`http://${location.hostname}:2026`;
-  $('#view').innerHTML=`<div class="h2">DeerFlow — research agent
+  $('#view').innerHTML=`<div class="h2">Research agent — ${location.hostname}:2026
     <span class="chip" id="dfchip"><span id="dfdot" style="width:8px;height:8px;border-radius:50%;background:var(--dim)"></span>Connecting…</span>
     <span class="ln"></span>
     <div class="btn sm" onclick="$('#dfframe').contentWindow.location.reload()">Reload</div>

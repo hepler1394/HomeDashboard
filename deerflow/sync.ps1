@@ -54,6 +54,11 @@ if ($Restore) {
     New-Item -ItemType Directory -Force -Path "$live\skills\custom" | Out-Null
     Copy-Item "$repo\skills\*" "$live\skills\custom\" -Recurse -Force
     "restored skills"
+    if (Test-Path "$repo\custom_tools") {
+        New-Item -ItemType Directory -Force -Path "$live\custom_tools" | Out-Null
+        Copy-Item "$repo\custom_tools\*" "$live\custom_tools\" -Recurse -Force
+        "restored custom_tools"
+    }
     ""
     "deer-flow\.env is NOT restored - recreate it with your API keys, then:"
     "  docker compose -p deer-flow -f deer-flow\docker\docker-compose.yaml up -d gateway"
@@ -62,6 +67,14 @@ if ($Restore) {
     Remove-Item "$repo\skills\*" -Recurse -Force -ErrorAction SilentlyContinue
     Copy-Item "$live\skills\custom\*" "$repo\skills\" -Recurse -Force
     "backed up skills"
+    if (Test-Path "$live\custom_tools") {
+        New-Item -ItemType Directory -Force -Path "$repo\custom_tools" | Out-Null
+        Remove-Item "$repo\custom_tools\*" -Recurse -Force -ErrorAction SilentlyContinue
+        Copy-Item "$live\custom_tools\*" "$repo\custom_tools\" -Recurse -Force `
+            -Exclude "__pycache__"
+        Remove-Item "$repo\custom_tools\__pycache__" -Recurse -Force -ErrorAction SilentlyContinue
+        "backed up custom_tools"
+    }
     ""
     "now commit: git add deerflow && git commit -m 'chore: sync deerflow config'"
 }

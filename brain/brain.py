@@ -23,7 +23,7 @@ never synced.
 import json, os, sqlite3, secrets, time, threading, ipaddress, urllib.request, urllib.parse, urllib.error, re, hashlib, socket, shutil, string, ctypes
 from datetime import datetime, timezone, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse, parse_qs, quote, unquote
 
 # ---- Paths / config --------------------------------------------------------
 BRAIN_VERSION = "3.8.2"
@@ -1960,7 +1960,10 @@ class Handler(BaseHTTPRequestHandler):
         # ---- staging file fetch (agents) ----
         if route.startswith("/staging/"):
             if not self._authed(): return self._send(401, {"error": "unauthorized"})
-            fn = os.path.basename(route.split("/staging/", 1)[1])
+            # The staged id embeds the original filename, so /upload percent-encodes
+            # it into the fetch URL. Decode before basename() — basename still
+            # strips any traversal the decode could reveal.
+            fn = os.path.basename(unquote(route.split("/staging/", 1)[1]))
             fp = os.path.join(STAGING, fn)
             if os.path.exists(fp):
                 return self._send(200, open(fp, "rb").read(), "application/octet-stream")
@@ -2138,7 +2141,11 @@ class Handler(BaseHTTPRequestHandler):
             target = g("agent"); dest = g("path")
             jid = None
             if target and dest:
-                jid = enqueue(target, "fetch", {"url": f"http://{host}/staging/{sid}", "dest": os.path.join(dest, name), "token": TOKEN}, by="upload")
+                # sid carries the original filename, so it can contain spaces and
+                # other characters that are illegal in a URL path. Unencoded, the
+                # agent's download 404s and the fetch job fails with a misleading
+                # "remote server returned an error: (404) Not Found".
+                jid = enqueue(target, "fetch", {"url": f"http://{host}/staging/{quote(sid)}", "dest": os.path.join(dest, name), "token": TOKEN}, by="upload")
                 fs_cache_bust(resolve_agent(target) or target)
             return self._send(200, {"ok": True, "staged": sid, "job": jid})
         if route == "/transfer":  # copy a file that already exists on source PC to a dest PC folder

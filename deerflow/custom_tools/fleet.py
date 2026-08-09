@@ -1,0 +1,258 @@
+"""Deliver a generated document to one of Cory's Windows PCs.
+
+Deliberately narrow. The agent gets exactly one capability — "render this
+markdown as a Word document and put it in this folder on this PC" — instead of
+a shell. That matters here: this deployment uses LocalSandboxProvider, so a
+bash tool would be an unsandboxed shell inside the gateway container, and that
+container is treated as loopback by the HomeDashboard brain, which means a
+shell would carry unrestricted fleet command execution. This tool cannot run
+commands, cannot choose arbitrary URLs, and cannot reach any endpoint other
+than the two it needs.
+
+Delivery path: POST the bytes to the brain's /upload, which stages the file and
+queues a `fetch` job on the target agent. `fetch` and `listdir` are the only
+job types used, so nothing here depends on the agents' AllowRaw setting.
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+import os
+import re
+import time
+import urllib.parse
+import urllib.request
+import zipfile
+from io import BytesIO
+from xml.sax.saxutils import escape
+
+from langchain.tools import tool
+
+logger = logging.getLogger(__name__)
+
+BRAIN = os.environ.get("DEER_FLOW_BRAIN_URL", "http://host.docker.internal:8788")
+
+# The brain must be reached via host.docker.internal: from there the container
+# arrives as loopback and is trusted, whereas the LAN address returns 401.
+#
+# But /upload builds the target PC's download URL from the request's Host
+# header, rewriting it only when it looks like loopback -- so an unmodified
+# request tells MainPC to fetch from "host.docker.internal", which is
+# meaningless on the LAN and fails with "remote name could not be resolved".
+# Sending the LAN address as Host keeps the trusted transport while producing a
+# URL the target can actually resolve.
+BRAIN_LAN_HOST = os.environ.get("DEER_FLOW_BRAIN_LAN_HOST", "192.168.1.174:8788")
+
+# Known machines. An unknown name is rejected rather than passed through, so a
+# malformed or injected agent name cannot become a request to something else.
+KNOWN_AGENTS = {"mainpc", "mymediacenter", "laptop", "plexserver"}
+
+# Verified 2026-08-08. Account names differ per machine; MainPC is Cory, not
+# BigBory. Machines absent here require an explicit dest_dir.
+DEFAULT_DESKTOPS = {
+    "mainpc": r"C:\Users\Cory\Desktop",
+    "plexserver": r"C:\Users\BigBory\Desktop",
+}
+
+SAFE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,120}\.docx$")
+
+_CT = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+<Default Extension="xml" ContentType="application/xml"/>
+<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+</Types>"""
+
+_RELS = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>"""
+
+_DOC_RELS = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"/>"""
+
+_W = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"'
+
+
+def _runs(text: str, rpr: str) -> str:
+    out = []
+    for tok in re.split(r"(\*\*[^*]+\*\*|\*[^*]+\*)", text):
+        if not tok:
+            continue
+        props, body = "", tok
+        if tok.startswith("**") and tok.endswith("**"):
+            props, body = "<w:b/>", tok[2:-2]
+        elif tok.startswith("*") and tok.endswith("*"):
+            props, body = "<w:i/>", tok[1:-1]
+        merged = rpr[:-len("</w:rPr>")] + props + "</w:rPr>" if (rpr and props) else (rpr or (f"<w:rPr>{props}</w:rPr>" if props else ""))
+        out.append(f"<w:r>{merged}<w:t xml:space=\"preserve\">{escape(body)}</w:t></w:r>")
+    return "".join(out) or "<w:r><w:t/></w:r>"
+
+
+def _para(text: str, *, size: int | None = None, bold: bool = False,
+          before: int = 0, after: int = 140, indent: bool = False) -> str:
+    bits = ("<w:b/>" if bold else "") + (f'<w:sz w:val="{size}"/>' if size else "")
+    rpr = f"<w:rPr>{bits}</w:rPr>" if bits else ""
+    ind = '<w:ind w:left="360" w:hanging="360"/>' if indent else ""
+    ppr = f'<w:pPr>{ind}<w:spacing w:before="{before}" w:after="{after}"/>{rpr}</w:pPr>'
+    return f"<w:p>{ppr}{_runs(text, rpr)}</w:p>"
+
+
+def _normalize(line: str) -> str:
+    line = re.sub(r"\s*\[citation:([^\]]+)\]\([^)]*\)", r" (\1)", line)
+    line = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r"\1", line)
+    line = re.sub(r"\)\s+\(", "; ", line)
+    line = re.sub(r"\s+([.,;])", r"\1", line)
+    return re.sub(r"[ \t]{2,}", " ", line)
+
+
+def markdown_to_docx_bytes(markdown: str, title: str | None = None) -> bytes:
+    """Render markdown as a .docx. Stdlib only — python-docx is not installed."""
+    body: list[str] = []
+    if title:
+        body.append(_para(title, size=40, bold=True, after=240))
+    for rawline in markdown.splitlines():
+        line = _normalize(rawline).rstrip()
+        if not line.strip():
+            continue
+        if m := re.match(r"^#\s+(.*)$", line):
+            if not title:
+                body.append(_para(m.group(1), size=40, bold=True, after=240))
+        elif m := re.match(r"^##\s+(.*)$", line):
+            body.append(_para(m.group(1), size=28, bold=True, before=320, after=120))
+        elif m := re.match(r"^###\s+(.*)$", line):
+            body.append(_para(m.group(1), size=24, bold=True, before=240, after=100))
+        elif m := re.match(r"^[-*]\s+(.*)$", line):
+            body.append(_para("\u2022  " + m.group(1), indent=True, after=90))
+        elif m := re.match(r"^(\d+)\.\s+(.*)$", line):
+            body.append(_para(f"{m.group(1)}.  {m.group(2)}", indent=True, after=90))
+        else:
+            body.append(_para(line))
+
+    sect = ('<w:sectPr><w:pgSz w:w="12240" w:h="15840"/>'
+            '<w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440"/></w:sectPr>')
+    document = ('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+                f'<w:document {_W}><w:body>{"".join(body)}{sect}</w:body></w:document>')
+
+    buf = BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("[Content_Types].xml", _CT)
+        z.writestr("_rels/.rels", _RELS)
+        z.writestr("word/_rels/document.xml.rels", _DOC_RELS)
+        z.writestr("word/document.xml", document)
+    return buf.getvalue()
+
+
+def _post_json(path: str, payload: dict, timeout: int = 30) -> dict:
+    body = json.dumps(payload).encode()
+    req = urllib.request.Request(BRAIN + path, data=body,
+                                 headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return json.loads(r.read().decode() or "{}")
+
+
+def _get_json(path: str, timeout: int = 30) -> dict:
+    with urllib.request.urlopen(BRAIN + path, timeout=timeout) as r:
+        return json.loads(r.read().decode() or "{}")
+
+
+def _wait_job(jid, seconds: int = 90) -> dict | None:
+    deadline = time.time() + seconds
+    while time.time() < deadline:
+        time.sleep(3)
+        for j in _get_json("/jobs").get("jobs", []):
+            if str(j.get("id")) == str(jid) and j.get("status") in ("done", "error", "failed"):
+                return j
+    return None
+
+
+def _listdir(agent: str, path: str) -> list | None:
+    r = _post_json("/jobs", {"agent": agent, "type": "listdir", "args": {"path": path}})
+    j = _wait_job(r.get("id"))
+    res = (j or {}).get("result") or {}
+    if not res.get("ok"):
+        return None
+    try:
+        return json.loads(res.get("stdout") or "[]")
+    except Exception:
+        return None
+
+
+@tool("deliver_document_to_pc", parse_docstring=True)
+def deliver_document_to_pc(
+    markdown: str,
+    filename: str,
+    agent: str = "mainpc",
+    dest_dir: str = "",
+    title: str = "",
+) -> str:
+    """Render markdown as a Word document and place it on one of Cory's Windows PCs, then verify it arrived.
+
+    Use this whenever he asks for a document to be written and saved to a
+    machine, for example "put a report on MainPC" or "save this to my desktop".
+    Delivery is verified by listing the destination folder, so a success result
+    means the file is genuinely there.
+
+    Args:
+        markdown: The document body as markdown. Headings, bullets, numbered items, **bold** and *italic* are supported.
+        filename: File name ending in .docx. Letters, digits, dots, hyphens and underscores only — no spaces.
+        agent: Target machine: mainpc, mymediacenter, laptop, or plexserver. Defaults to mainpc.
+        dest_dir: Destination folder on that PC. Leave empty to use that machine's Desktop.
+        title: Optional cover title rendered at the top of the document.
+    """
+    agent = (agent or "mainpc").strip().lower()
+    if agent not in KNOWN_AGENTS:
+        return f"Refused: unknown machine '{agent}'. Known machines: {', '.join(sorted(KNOWN_AGENTS))}."
+
+    filename = (filename or "").strip()
+    if not SAFE_NAME.match(filename):
+        return ("Refused: filename must end in .docx and contain only letters, digits, "
+                f"dots, hyphens or underscores (no spaces). Got: {filename!r}")
+
+    dest = (dest_dir or "").strip() or DEFAULT_DESKTOPS.get(agent, "")
+    if not dest:
+        return (f"No default Desktop recorded for '{agent}'. Pass dest_dir explicitly, "
+                f"e.g. C:\\Users\\<account>\\Desktop.")
+
+    for d in _get_json("/devices").get("devices", []):
+        if str(d.get("agent", "")).lower() == agent and not d.get("online"):
+            return f"Refused: {agent} is offline right now, so the file would sit queued. Try again when it is up."
+
+    try:
+        data = markdown_to_docx_bytes(markdown, title or None)
+    except Exception as exc:
+        logger.exception("docx render failed")
+        return f"Could not build the document: {exc}"
+
+    qs = urllib.parse.urlencode({"name": filename, "agent": agent, "path": dest})
+    req = urllib.request.Request(f"{BRAIN}/upload?{qs}", data=data,
+                                 headers={"Content-Type": "application/octet-stream",
+                                          "Host": BRAIN_LAN_HOST})
+    try:
+        with urllib.request.urlopen(req, timeout=120) as r:
+            up = json.loads(r.read().decode() or "{}")
+    except Exception as exc:
+        logger.exception("upload failed")
+        return f"Upload to the dashboard failed: {exc}"
+
+    jid = up.get("job")
+    if not jid:
+        return f"The dashboard staged the file but queued no delivery job: {json.dumps(up)[:200]}"
+
+    job = _wait_job(jid)
+    if not job:
+        return f"Delivery job {jid} did not finish within 90s. Check the dashboard's job list."
+    result = job.get("result") or {}
+    if not result.get("ok"):
+        return f"Delivery job {jid} failed: {result.get('stderr') or job.get('status')}"
+
+    items = _listdir(agent, dest) or []
+    hit = [i for i in items if isinstance(i, dict) and str(i.get("name", "")).lower() == filename.lower()]
+    if not hit:
+        return (f"The delivery job reported success but {filename} is not in {dest} on {agent}. "
+                "Do not tell the user it arrived.")
+
+    size = hit[0].get("sizeMB")
+    return (f"Delivered and verified: {dest}\\{filename} on {agent}"
+            + (f" ({size} MB)." if size is not None else "."))
