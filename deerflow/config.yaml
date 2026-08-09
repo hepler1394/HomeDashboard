@@ -192,6 +192,9 @@ models:
   #   max_tokens: 16000
   #   max_retries: 2
   # --- Local models on PlexServer's GPU (GTX 1080, 8 GB VRAM) ---
+  # Reached by LAN IP, not host.docker.internal: the stack runs on the WSL2
+  # daemon, where that name resolves to the Ubuntu VM's bridge rather than the
+  # Windows host where Ollama actually runs.
   # Reached through Ollama's OpenAI-compatible /v1 endpoint with langchain_openai
   # rather than langchain_ollama, which is NOT in the production image — this way
   # local inference needs no rebuild. api_key must be a non-empty literal (Ollama
@@ -203,7 +206,7 @@ models:
     use: langchain_openai:ChatOpenAI
     model: qwen3:8b
     api_key: ollama
-    base_url: http://host.docker.internal:11434/v1
+    base_url: http://192.168.1.174:11434/v1
     max_tokens: 8192
     temperature: 0.7
   # Qwen3 14B was tried here and removed 2026-08-08. Measured on this box it ran
@@ -216,7 +219,7 @@ models:
     use: langchain_openai:ChatOpenAI
     model: llama3.1:8b
     api_key: ollama
-    base_url: http://host.docker.internal:11434/v1
+    base_url: http://192.168.1.174:11434/v1
     max_tokens: 8192
     temperature: 0.7
 

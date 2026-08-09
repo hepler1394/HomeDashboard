@@ -4,10 +4,14 @@ Deliberately narrow. The agent gets exactly one capability — "render this
 markdown as a Word document and put it in this folder on this PC" — instead of
 a shell. That matters here: this deployment uses LocalSandboxProvider, so a
 bash tool would be an unsandboxed shell inside the gateway container, and that
-container is treated as loopback by the HomeDashboard brain, which means a
-shell would carry unrestricted fleet command execution. This tool cannot run
+shell would hold whatever fleet access this container has. This tool cannot run
 commands, cannot choose arbitrary URLs, and cannot reach any endpoint other
-than the two it needs.
+than the few it needs.
+
+(Under the old Docker Desktop engine the container reached the brain as
+loopback and was trusted with no credential at all. On the WSL2 daemon it
+arrives as an ordinary private address and must present a token, so its access
+is now granted deliberately rather than inherited from a NAT quirk.)
 
 Delivery path: POST the bytes to the brain's /upload, which stages the file and
 queues a `fetch` job on the target agent. `fetch` and `listdir` are the only
@@ -31,18 +35,26 @@ from langchain.tools import tool
 
 logger = logging.getLogger(__name__)
 
-BRAIN = os.environ.get("DEER_FLOW_BRAIN_URL", "http://host.docker.internal:8788")
-
-# The brain must be reached via host.docker.internal: from there the container
-# arrives as loopback and is trusted, whereas the LAN address returns 401.
-#
-# But /upload builds the target PC's download URL from the request's Host
-# header, rewriting it only when it looks like loopback -- so an unmodified
-# request tells MainPC to fetch from "host.docker.internal", which is
-# meaningless on the LAN and fails with "remote name could not be resolved".
-# Sending the LAN address as Host keeps the trusted transport while producing a
-# URL the target can actually resolve.
+# The stack runs on the WSL2 daemon, where host.docker.internal resolves to
+# 172.17.0.1 -- the bridge inside the Ubuntu VM, not the Windows host. Ollama
+# and the brain both live on Windows, so reach them by the LAN address instead.
+BRAIN = os.environ.get("DEER_FLOW_BRAIN_URL", "http://192.168.1.174:8788")
 BRAIN_LAN_HOST = os.environ.get("DEER_FLOW_BRAIN_LAN_HOST", "192.168.1.174:8788")
+
+# Under Docker Desktop the container arrived at the brain as loopback and was
+# trusted implicitly -- convenient, but it meant anything in this container had
+# unauthenticated fleet access. From the WSL daemon it arrives as an ordinary
+# private address and gets 401, so it now authenticates explicitly with the
+# dashboard token. That is the better arrangement: access is granted rather
+# than inherited from a NAT quirk.
+BRAIN_TOKEN = os.environ.get("DEER_FLOW_BRAIN_TOKEN", "")
+
+
+def _auth_headers(extra: dict | None = None) -> dict:
+    headers = dict(extra or {})
+    if BRAIN_TOKEN:
+        headers["X-Brain-Token"] = BRAIN_TOKEN
+    return headers
 
 # Known machines. An unknown name is rejected rather than passed through, so a
 # malformed or injected agent name cannot become a request to something else.
@@ -147,13 +159,14 @@ def markdown_to_docx_bytes(markdown: str, title: str | None = None) -> bytes:
 def _post_json(path: str, payload: dict, timeout: int = 30) -> dict:
     body = json.dumps(payload).encode()
     req = urllib.request.Request(BRAIN + path, data=body,
-                                 headers={"Content-Type": "application/json"})
+                                 headers=_auth_headers({"Content-Type": "application/json"}))
     with urllib.request.urlopen(req, timeout=timeout) as r:
         return json.loads(r.read().decode() or "{}")
 
 
 def _get_json(path: str, timeout: int = 30) -> dict:
-    with urllib.request.urlopen(BRAIN + path, timeout=timeout) as r:
+    req = urllib.request.Request(BRAIN + path, headers=_auth_headers())
+    with urllib.request.urlopen(req, timeout=timeout) as r:
         return json.loads(r.read().decode() or "{}")
 
 
@@ -227,8 +240,8 @@ def deliver_document_to_pc(
 
     qs = urllib.parse.urlencode({"name": filename, "agent": agent, "path": dest})
     req = urllib.request.Request(f"{BRAIN}/upload?{qs}", data=data,
-                                 headers={"Content-Type": "application/octet-stream",
-                                          "Host": BRAIN_LAN_HOST})
+                                 headers=_auth_headers({"Content-Type": "application/octet-stream",
+                                                        "Host": BRAIN_LAN_HOST}))
     try:
         with urllib.request.urlopen(req, timeout=120) as r:
             up = json.loads(r.read().decode() or "{}")

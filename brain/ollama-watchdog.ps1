@@ -25,8 +25,21 @@
 $ErrorActionPreference = 'SilentlyContinue'
 
 $port = 11434
-$exe  = Join-Path $env:LOCALAPPDATA 'Programs\Ollama\ollama.exe'
-$log  = Join-Path $env:LOCALAPPDATA 'HomeNetDashboard\ollama-watchdog.log'
+
+# Log to ProgramData, NOT LOCALAPPDATA. This script is meant to run both as
+# BigBory (the user watchdog) and as SYSTEM (the boot task), and under SYSTEM
+# $env:LOCALAPPDATA resolves to C:\Windows\System32\config\systemprofile\...
+# — so SYSTEM runs wrote to a file nobody thinks to read, which is exactly why
+# the 2026-08-09 reboot gave no evidence of whether OllamaBoot had run at all.
+# One shared path means both accounts append to the same timeline.
+$log = 'C:\ProgramData\HomeNetDashboard\ollama-watchdog.log'
+
+# ollama.exe lives in the installing user's profile, so SYSTEM cannot find it
+# via its own LOCALAPPDATA either. Try the known install path explicitly.
+$exe = Join-Path $env:LOCALAPPDATA 'Programs\Ollama\ollama.exe'
+if (-not (Test-Path $exe)) {
+    $exe = 'C:\Users\BigBory\AppData\Local\Programs\Ollama\ollama.exe'
+}
 
 New-Item -ItemType Directory -Force -Path (Split-Path $log) | Out-Null
 
@@ -37,6 +50,7 @@ function Write-Log($msg) {
     if ($lines.Count -gt 500) { $lines[-200..-1] | Set-Content $log }
 }
 
+Write-Log "run start (user=$env:USERNAME, exe=$exe)"
 if (-not (Test-Path $exe)) { Write-Log "ollama.exe not found at $exe"; exit 1 }
 
 # Already serving? Nothing to do. Check the port rather than the process: the
