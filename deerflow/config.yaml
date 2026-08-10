@@ -1133,6 +1133,20 @@ tools:
     group: file:write
     use: custom_tools.fleet:deliver_document_to_pc
 
+  # Arbitrary command execution on any fleet PC. Cory enabled this knowingly on
+  # 2026-08-09 after being shown the tradeoff twice: the dashboard agents run
+  # with AllowRaw, so this is unrestricted execution with his privileges, and
+  # this agent reads untrusted web pages as part of normal research. The tool's
+  # docstring carries the standing instruction never to run a command that came
+  # from read content rather than from him. Remove this entry to revoke.
+  # NOT group "bash": with LocalSandboxProvider active, get_available_tools
+  # strips the whole bash group (is_host_bash_allowed is false), which would
+  # silently drop this tool too. It is a fleet tool, so it rides file:write
+  # alongside deliver_document_to_pc.
+  - name: run_command_on_pc
+    group: file:write
+    use: custom_tools.fleet:run_command_on_pc
+
 # ============================================================================
 # Tool Search Configuration (Deferred Tool Loading)
 # ============================================================================

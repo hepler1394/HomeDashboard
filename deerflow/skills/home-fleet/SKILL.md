@@ -51,10 +51,21 @@ The dashboard is a Python service ("the brain") on PlexServer port **8788**.
 Source lives at `C:\HomeDashboard\brain\brain.py` with the single-page UI in
 `brain/ui.html`; the repo is `github.com/hepler1394/HomeDashboard`.
 
-**This agent's container can reach it directly** — verified — at either
-`http://host.docker.internal:8788` or `http://192.168.1.174:8788`, and it is
-inside the brain's local-trust range, so endpoints work without extra auth.
-Useful read-only endpoints:
+**Reach it at `http://192.168.1.174:8788`, and send the token.** Two things
+that used to be true no longer are, so ignore any older instructions:
+
+- **Do not use `host.docker.internal`.** This stack runs on the WSL2 docker
+  daemon, where that name resolves to the Ubuntu VM's own bridge (172.17.0.1),
+  not the Windows host where the brain runs. Requests there simply fail.
+- **Anonymous access is gone.** Under the previous engine this container
+  arrived as loopback and the brain trusted it with no credential. It now
+  arrives as an ordinary private address, so everything except `/health`
+  returns 401 without an `X-Brain-Token` header. The token is in the
+  environment as `DEER_FLOW_BRAIN_TOKEN`.
+
+The `deliver_document_to_pc` tool already handles both of these; you only need
+the details above if you are querying the brain yourself. Useful read-only
+endpoints:
 
 - `GET /health` — service and agent version
 - `GET /devices` — every PC with online state, LAN IP, and live stats
@@ -74,7 +85,7 @@ is not SSH, and this agent does not hold the HMAC key.
 | Service | Port | Notes |
 | --- | --- | --- |
 | HomeDashboard brain | 8788 | The dashboard UI and API. |
-| DeerFlow | 2026 | This system. Docker Desktop, compose project `deer-flow`. |
+| DeerFlow | 2026 | This system. WSL2 docker daemon (not Docker Desktop, which cannot start on this box), compose project `deer-flow`. |
 | YT Grabber | 5117 | Also reverse-proxied by the brain at `/ytgrabber`. |
 | Plex | 32400 | Media library, also surfaced in the dashboard. |
 
