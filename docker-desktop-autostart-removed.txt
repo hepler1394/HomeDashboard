@@ -1,0 +1,5 @@
+Removed from HKCU Run on 2026-08-07 because Docker Desktop is broken on this box (Inference manager crash) and Docker now runs in WSL2.
+Original value:
+C:\Program Files\Docker\Docker\Docker Desktop.exe
+Restore with:
+Set-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Name 'Docker Desktop' -Value 'C:\Program Files\Docker\Docker\Docker Desktop.exe'
