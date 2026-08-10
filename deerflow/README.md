@@ -24,9 +24,37 @@ one disk with no version control and no backup. This directory is that backup.
 | `skills/` | Our custom skills, mirroring `deer-flow/skills/custom/` |
 | `sync.ps1` | Copies between here and the live checkout in either direction |
 
-**`.env` is deliberately absent and must stay that way** — it holds the real
-Anthropic, Brave, and Gemini keys. Every `api_key` in `config.yaml` is a `$VAR`
-reference, never a literal, which is what makes this directory safe to push.
+**`.env` is deliberately absent and must stay that way** — it holds real
+credentials. Every `api_key` in `config.yaml` is a `$VAR` reference, never a
+literal, which is what makes this directory safe to push.
+
+### What `deer-flow/.env` must contain
+
+It is the only file here with no backup, and several entries are settings you
+would not think to recreate. If it is ever lost, rebuild it with these keys:
+
+| Key | Purpose |
+| --- | --- |
+| `ANTHROPIC_API_KEY` | Claude Sonnet 5, the default model |
+| `BRAVE_SEARCH_API_KEY` | legacy; search now uses DDGS and needs no key |
+| `OPENROUTER_API_KEY` | OpenRouter, paid and `:free` models |
+| `GEMINI_API_KEY` | currently rejected as invalid; Gemini is disabled in config |
+| `DEER_FLOW_BRAIN_TOKEN` | lets the delivery tool authenticate to the dashboard brain. Mint a fresh one with `curl http://127.0.0.1:8788/token` **from PlexServer itself** — that route is loopback-only |
+| `AUTH_JWT_SECRET` | signs login cookies. Was auto-generated into `backend/.deer-flow/.jwt_secret`; pinned here so losing that file does not log everyone out. **Changing it invalidates every session.** |
+| `DEER_FLOW_AUTH_ALLOW_INSECURE_PERSISTENT_COOKIE=1` | the non-obvious one. The dashboard reaches DeerFlow over plain HTTP at a Tailscale hostname, which is neither HTTPS nor localhost, so the cookie policy falls through to `public_http_session` with `max_age=None` — a cookie that dies on browser close, forcing a login every time. This flag restores the 7-day cookie. |
+
+Verify the cookie policy after any change:
+
+```powershell
+wsl -d Ubuntu-24.04 -u root -- docker exec deer-flow-gateway sh -lc 'cd backend && PYTHONPATH=. uv run --no-sync python -c "
+from starlette.requests import Request
+from app.gateway.auth.session_cookie import resolve_session_cookie_policy
+scope={\"type\":\"http\",\"headers\":[(b\"host\",b\"plexserver.tail22fc0f.ts.net:2026\")],\"scheme\":\"http\",\"path\":\"/\",\"query_string\":b\"\",\"method\":\"POST\",\"client\":(\"10.0.0.5\",1),\"server\":(\"x\",2026)}
+print(resolve_session_cookie_policy(Request(scope), remember_me=True))"'
+```
+
+It should report `operator_insecure_persistent` with `max_age=604800`, not
+`public_http_session`.
 
 ## Keeping it current
 
