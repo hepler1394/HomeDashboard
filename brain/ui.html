@@ -147,6 +147,9 @@ select:focus,input:focus,textarea:focus{border-color:var(--acc)}
 .alert.warn{background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);color:#fcd34d}
 .drv{display:flex;align-items:center;gap:8px;font-size:12px;padding:5px 0;border-top:1px solid rgba(255,255,255,.05)}
 .drv .dl{font-weight:700;width:26px}.drv .db{flex:1}.drv .dn{color:var(--mut);white-space:nowrap;font-variant-numeric:tabular-nums}
+/* Keep a number input glued to its unit (%, min, :00) so the unit never
+   orphans onto its own line when the row wraps on a narrow screen. */
+.unitgrp{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
 .toast{position:fixed;right:20px;bottom:20px;display:flex;flex-direction:column;gap:9px;z-index:80}
 .toast div{background:#131b2b;border:1px solid var(--line2);border-left:3px solid var(--acc);border-radius:10px;padding:11px 15px;font-size:13px;box-shadow:var(--shadow);min-width:220px;animation:sl .25s}
 .toast div.err{border-left-color:var(--bad)}
@@ -256,6 +259,12 @@ code{background:rgba(0,0,0,.3);padding:2px 6px;border-radius:5px;font-size:12px}
   #target{max-width:42vw}
   .h2{flex-wrap:wrap;row-gap:6px;margin:10px 0 10px}
   .h2 select{max-width:52vw}
+  /* System-health per-PC rows: 5 columns (host, agent ver, autostart,
+     launcher, online) cram into one nowrap flex line on a phone and the
+     labels overlap into mush. Let the row wrap — host + version land on row 1,
+     the three status dots flow onto row 2. */
+  .drv{flex-wrap:wrap;row-gap:5px;padding:9px 0}
+  .drv>span:nth-child(2){flex:1 1 auto!important;min-width:120px}
   .card{padding:14px 13px}
   .dcard .dsrc{max-width:64vw}
   .mobonly{display:inline-flex!important}
@@ -1198,15 +1207,15 @@ async function renderSettings(){const keys=await api('/ai/keys');const plex=awai
     <p style="color:var(--mut);font-size:12.5px;margin:0 0 8px">Logging in from a browser creates a session that lasts 30 days. If you lose a device, sign every browser out — they'll all need the password again.</p>
     <div class="btn sm warn" onclick="signoutAll()">Sign out all browsers</div></div>
   <div class="card"><h3 style="margin:0 0 4px">Alerts &amp; morning digest</h3><p style="color:var(--mut);font-size:13px">The brain watches the house and messages you on Telegram (set up the bot below first). Alerts also always show at the top of Fleet.</p>
-    <div class="row" style="padding:7px 0;border-top:1px solid var(--line)"><label class="row" style="gap:8px"><input type="checkbox" id="r_driveFull" style="width:auto"> Drive nearly full — alert at</label><input id="rv_driveFull" type="number" min="50" max="99" style="width:70px">%</div>
-    <div class="row" style="padding:7px 0;border-top:1px solid var(--line)"><label class="row" style="gap:8px"><input type="checkbox" id="r_offline" style="width:auto"> PC goes offline — alert after</label><input id="rv_offline" type="number" min="1" max="1440" style="width:70px">min</div>
+    <div class="row" style="padding:7px 0;border-top:1px solid var(--line)"><label class="row" style="gap:8px"><input type="checkbox" id="r_driveFull" style="width:auto"> Drive nearly full — alert at</label><span class="unitgrp"><input id="rv_driveFull" type="number" min="50" max="99" style="width:70px">%</span></div>
+    <div class="row" style="padding:7px 0;border-top:1px solid var(--line)"><label class="row" style="gap:8px"><input type="checkbox" id="r_offline" style="width:auto"> PC goes offline — alert after</label><span class="unitgrp"><input id="rv_offline" type="number" min="1" max="1440" style="width:70px">min</span></div>
     <div class="row" style="padding:7px 0;border-top:1px solid var(--line)"><label class="row" style="gap:8px"><input type="checkbox" id="r_vpnDrop" style="width:auto"> VPN turns off on a PC</label></div>
     <div class="row" style="padding:7px 0;border-top:1px solid var(--line)"><label class="row" style="gap:8px"><input type="checkbox" id="r_jobFail" style="width:auto"> A job fails</label></div>
     <div class="row" style="padding:7px 0;border-top:1px solid var(--line)"><label class="row" style="gap:8px"><input type="checkbox" id="r_newDevice" style="width:auto"> A new device joins the Wi-Fi</label></div>
     <div class="row" style="padding:7px 0;border-top:1px solid var(--line)"><label class="row" style="gap:8px"><input type="checkbox" id="r_internet" style="width:auto"> Internet goes down</label></div>
-    <div class="row" style="padding:7px 0;border-top:1px solid var(--line)"><label class="row" style="gap:8px"><input type="checkbox" id="r_digest" style="width:auto"> Morning digest at</label><input id="rv_digest" type="number" min="0" max="23" style="width:70px">:00
+    <div class="row" style="padding:7px 0;border-top:1px solid var(--line)"><label class="row" style="gap:8px"><input type="checkbox" id="r_digest" style="width:auto"> Morning digest at</label><span class="unitgrp"><input id="rv_digest" type="number" min="0" max="23" style="width:70px">:00</span>
       <label class="row" style="gap:6px;margin-left:14px"><input type="checkbox" id="rv_digest_ai" style="width:auto"> ${ic('ai')} written by AI (needs a working AI provider)</label></div>
-    <div class="row" style="padding:7px 0;border-top:1px solid var(--line)"><label class="row" style="gap:8px"><input type="checkbox" id="r_nightlyBackup" style="width:auto"> Run backup jobs nightly at</label><input id="rv_nightlyBackup" type="number" min="0" max="23" style="width:70px">:00</div>
+    <div class="row" style="padding:7px 0;border-top:1px solid var(--line)"><label class="row" style="gap:8px"><input type="checkbox" id="r_nightlyBackup" style="width:auto"> Run backup jobs nightly at</label><span class="unitgrp"><input id="rv_nightlyBackup" type="number" min="0" max="23" style="width:70px">:00</span></div>
     <div class="row" style="margin-top:10px"><div class="btn" onclick="saveRules()">Save alerts</div><div class="btn sm" onclick="testDigest()">Send test digest</div></div>
     <pre id="digestPreview" class="hidden" style="font-size:12px;color:var(--mut);background:rgba(0,0,0,.25);border:1px solid var(--line);border-radius:9px;padding:10px;white-space:pre-wrap;margin-top:10px"></pre></div>
   <div class="card"><h3 style="margin:0 0 4px">AI provider keys</h3><p style="color:var(--mut);font-size:13px">Stored locally on the brain only. Default provider tried first, others as fallback.</p>
