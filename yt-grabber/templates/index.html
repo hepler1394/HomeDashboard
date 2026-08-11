@@ -187,7 +187,7 @@ main{flex:1;overflow-y:auto;padding:20px 28px 60px}
   <div class="topicons">
     <button class="iconbtn" title="AI expand search" onclick="aiExpand()"><svg class="ic sm fill"><use href="#i-ai"/></svg></button>
     <button class="iconbtn" title="Notifications" onclick="go('notifs')"><svg class="ic sm"><use href="#i-bell"/></svg><span class="badge" id="notifBadge" style="display:none">0</span></button>
-    <button class="iconbtn" title="Downloads" onclick="toggleDrawer()"><svg class="ic sm"><use href="#i-download"/></svg><span class="badge" id="dlBadge" style="display:none">0</span></button>
+    <button class="iconbtn dl-toggle" title="Downloads" onclick="toggleDrawer()"><svg class="ic sm"><use href="#i-download"/></svg><span class="badge" id="dlBadge" style="display:none">0</span></button>
     <button class="iconbtn" title="Settings" onclick="openSettings()"><svg class="ic sm"><use href="#i-settings"/></svg></button>
   </div>
 </header>
@@ -199,7 +199,7 @@ main{flex:1;overflow-y:auto;padding:20px 28px 60px}
     <div class="navitem" data-view="channels" onclick="go('channels')"><svg class="ic"><use href="#i-tv"/></svg>Channels</div>
     <div class="navitem" data-view="notifs" onclick="go('notifs')"><svg class="ic"><use href="#i-bell"/></svg>Notifications</div>
     <div class="navsep"></div>
-    <div class="navitem" onclick="toggleDrawer()"><svg class="ic"><use href="#i-download"/></svg>Downloads</div>
+    <div class="navitem dl-toggle" onclick="toggleDrawer()"><svg class="ic"><use href="#i-download"/></svg>Downloads</div>
     <div class="navitem" onclick="openSettings()"><svg class="ic"><use href="#i-settings"/></svg>Settings</div>
     <div class="navsep"></div>
     <div class="navlabel">Tips</div>
@@ -358,6 +358,12 @@ const esc=s=>(s||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'
 function toast(m,ms=3000){const t=$("toast");t.textContent=m;t.style.display="block";clearTimeout(t._h);t._h=setTimeout(()=>t.style.display="none",ms);}
 function toggleNav(){$("nav").classList.toggle("collapsed");}
 function toggleDrawer(){$("drawer").classList.toggle("show");}
+function closeDrawer(){$("drawer").classList.remove("show");}
+// Click anywhere outside the downloads drawer (or press Escape) to close it,
+// instead of having to click the Downloads button again. Ignore clicks on the
+// toggle buttons themselves so the opening click does not immediately re-close.
+document.addEventListener("click",e=>{const d=$("drawer");if(!d.classList.contains("show"))return;if(d.contains(e.target)||e.target.closest(".dl-toggle"))return;closeDrawer();});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeDrawer();});
 
 function go(v){
   view=v;
