@@ -57,9 +57,17 @@ BOOTSTRAP_PS = os.path.join(SCRIPT_DIR, "bootstrap.ps1")
 CATALOG_F    = os.path.join(SCRIPT_DIR, "catalog.json")
 UI_HTML      = os.path.join(SCRIPT_DIR, "ui.html")
 
+# The one folder Syncthing keeps live-synced to every PC. The brain runs on
+# PlexServer, so it reads/writes this directly and Syncthing propagates. Files
+# dropped here (e.g. screenshots sent to the Telegram bot) appear on every PC.
+HOMESHARE     = r"C:\HomeShare"
+HS_INBOX      = os.path.join(HOMESHARE, "Screenshots")
+
 os.makedirs(DATA_DIR, exist_ok=True)
 os.makedirs(STAGING, exist_ok=True)
 os.makedirs(SHOTS_DIR, exist_ok=True)
+try: os.makedirs(HS_INBOX, exist_ok=True)
+except Exception: pass
 
 def shot_optin(agent):
     return bool(load_json(SHOT_OPTIN_F, {}).get(agent))
@@ -1504,6 +1512,58 @@ def rules_loop():
         except Exception as e:
             audit("rules_error", err=str(e)[:200])
 
+def tg_save_incoming_file(msg, token):
+    """A photo or document sent to the bot -> saved into HomeShare, which
+    Syncthing propagates to every PC. Returns a status string for the owner,
+    or None if the message carried no file. Screenshots are the main use:
+    send one to the bot and it lands in C:\\HomeShare\\Screenshots on all PCs."""
+    file_id = None
+    orig_name = None
+    kind = "file"
+    photos = msg.get("photo")
+    doc = msg.get("document")
+    if photos:                       # photo: an array of sizes, last is largest
+        file_id = photos[-1].get("file_id")
+        kind = "photo"
+    elif doc:
+        file_id = doc.get("file_id")
+        orig_name = doc.get("file_name")
+        kind = "document"
+    if not file_id:
+        return None
+    try:
+        # getFile -> file_path, then download from the file endpoint
+        u = f"https://api.telegram.org/bot{token}/getFile?file_id={quote(file_id)}"
+        with urllib.request.urlopen(u, timeout=30) as r:
+            fp = json.loads(r.read().decode("utf-8")).get("result", {}).get("file_path")
+        if not fp:
+            return "Could not fetch that file from Telegram."
+        ext = os.path.splitext(fp)[1] or (".jpg" if kind == "photo" else "")
+        cap = (msg.get("caption") or "").strip()
+        # Build a safe filename: caption (if any) else timestamped, keep the ext.
+        base = re.sub(r"[^A-Za-z0-9 _.-]", "", (orig_name or cap))[:60].strip()
+        if not base:
+            base = datetime.now().strftime("shot-%Y%m%d-%H%M%S")
+        if not os.path.splitext(base)[1]:
+            base += ext
+        os.makedirs(HS_INBOX, exist_ok=True)
+        dest = os.path.join(HS_INBOX, base)
+        n = 1
+        while os.path.exists(dest):    # never overwrite an existing file
+            stem, e = os.path.splitext(base)
+            dest = os.path.join(HS_INBOX, f"{stem}_{n}{e}"); n += 1
+        durl = f"https://api.telegram.org/file/bot{token}/{fp}"
+        with urllib.request.urlopen(durl, timeout=60) as r:
+            data = r.read()
+        with open(dest, "wb") as f:
+            f.write(data)
+        audit("tg_file_saved", name=os.path.basename(dest), bytes=len(data), kind=kind)
+        return (f"Saved to HomeShare -> Screenshots/{os.path.basename(dest)} "
+                f"({len(data)//1024} KB). It will sync to every PC and shows in "
+                f"the dashboard's HomeShare tab.")
+    except Exception as e:
+        return f"Failed to save that file: {str(e)[:120]}"
+
 def telegram_loop():
     """Owner-locked long-poll bot. Commands mirror dashboard actions."""
     offset = 0
@@ -1530,7 +1590,13 @@ def telegram_loop():
                                              "user": frm.get("username", ""), "at": now_iso()}
                         save_json(TELEGRAM_F, cfg)
                     continue  # hard owner whitelist
-                tg_handle(msg.get("text", ""))
+                # A photo/document from the owner is saved into HomeShare;
+                # text messages remain commands.
+                saved = tg_save_incoming_file(msg, c["token"])
+                if saved is not None:
+                    tg_send(saved)
+                else:
+                    tg_handle(msg.get("text", ""))
         except Exception:
             time.sleep(5)
 
@@ -1895,6 +1961,51 @@ class Handler(BaseHTTPRequestHandler):
             if os.path.exists(fp):
                 return self._send(200, open(fp, "rb").read(), "image/jpeg")
             return self._send(404, {"error": "no screenshot yet"})
+        if route == "/share/list":
+            # Browse HomeShare in the dashboard. The brain runs on PlexServer and
+            # reads C:\HomeShare directly, so no SMB / network-credential prompt.
+            if not (self._authed() or self._token_ok(g("t"))): return self._send(401, {"error": "unauthorized"})
+            sub = (g("sub") or "").replace("/", "\\").strip("\\")
+            base = os.path.abspath(os.path.join(HOMESHARE, sub))
+            if not base.startswith(os.path.abspath(HOMESHARE)):   # no traversal out of HomeShare
+                return self._send(400, {"error": "bad path"})
+            if not os.path.isdir(base):
+                return self._send(200, {"cwd": sub, "dirs": [], "files": []})
+            IMG = (".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".svg")
+            dirs, files = [], []
+            try:
+                for name in sorted(os.listdir(base), key=str.lower):
+                    if name.startswith(".stfolder") or name.startswith(".sync"): continue
+                    full = os.path.join(base, name)
+                    rel = (sub + "\\" + name) if sub else name
+                    try: st = os.stat(full)
+                    except Exception: continue
+                    if os.path.isdir(full):
+                        dirs.append({"name": name, "rel": rel})
+                    else:
+                        files.append({"name": name, "rel": rel, "size": st.st_size,
+                                      "mtime": datetime.fromtimestamp(st.st_mtime, timezone.utc).isoformat(),
+                                      "img": name.lower().endswith(IMG)})
+            except Exception as e:
+                return self._send(500, {"error": str(e)[:200]})
+            # Newest files first — screenshots you just sent land at the top.
+            files.sort(key=lambda x: x["mtime"], reverse=True)
+            return self._send(200, {"cwd": sub, "dirs": dirs, "files": files})
+        if route == "/share/file":
+            # <img> tags can't send the token header, so accept it as ?t= too.
+            if not (self._authed() or self._token_ok(g("t"))): return self._send(401, {"error": "unauthorized"})
+            rel = (g("path") or "").replace("/", "\\").strip("\\")
+            full = os.path.abspath(os.path.join(HOMESHARE, rel))
+            if not full.startswith(os.path.abspath(HOMESHARE)) or not os.path.isfile(full):
+                return self._send(404, {"error": "not found"})
+            ctypes = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+                      ".gif": "image/gif", ".webp": "image/webp", ".svg": "image/svg+xml",
+                      ".pdf": "application/pdf", ".txt": "text/plain; charset=utf-8"}
+            ct = ctypes.get(os.path.splitext(full)[1].lower(), "application/octet-stream")
+            try:
+                return self._send(200, open(full, "rb").read(), ct)
+            except Exception:
+                return self._send(500, {"error": "read failed"})
         if route == "/audit":
             if not self._authed(): return self._send(401, {"error": "unauthorized"})
             try: n = min(int(g("n", "150")), 1000)
