@@ -254,7 +254,7 @@ code{background:rgba(0,0,0,.3);padding:2px 6px;border-radius:5px;font-size:12px}
   .hd h1{font-size:18px;flex:1 1 auto}
   .hd .chip{font-size:11.5px;padding:5px 9px}
   #target{max-width:42vw}
-  .h2{flex-wrap:wrap;row-gap:6px}
+  .h2{flex-wrap:wrap;row-gap:6px;margin:10px 0 10px}
   .h2 select{max-width:52vw}
   .card{padding:14px 13px}
   .dcard .dsrc{max-width:64vw}
@@ -495,9 +495,35 @@ function go(v){
 // at /ytgrabber, so it lives inside the dashboard on this one port — reachable
 // from every PC + phone over Tailscale with no separate :5117 exposed.
 function renderYTG(){
-  $('#view').innerHTML=`<iframe src="/ytgrabber" title="YT Grabber" allow="clipboard-write; fullscreen"
+  $('#view').innerHTML=`<iframe class="ifpanel" data-deskh="calc(100vh - 96px)" src="/ytgrabber" title="YT Grabber" allow="clipboard-write; fullscreen"
     style="width:100%;height:calc(100vh - 96px);min-height:520px;border:1px solid var(--line);border-radius:14px;background:#0b0f17;box-shadow:var(--shadow)"></iframe>`;
+  fitIframePanels();
 }
+// A full-height iframe sized with calc(100vh - Npx) overshoots on mobile: the
+// header wraps to extra rows and the fixed bottom nav covers ~55px + safe-area,
+// so the iframe's bottom is hidden behind the nav and runs off-screen (the
+// DeerFlow/YTG tabs lost ~150px). Measure the real gap between each panel's top
+// and the nav instead. On desktop the nav is hidden, so restore the data-deskh
+// calc. Re-run on resize and orientation change.
+function fitIframePanels(){
+  const nav=document.querySelector('.bnav');
+  const mobile=nav && getComputedStyle(nav).display!=='none';
+  requestAnimationFrame(()=>{
+    document.querySelectorAll('.ifpanel').forEach(p=>{
+      if(mobile){
+        const top=p.getBoundingClientRect().top;
+        const navH=nav.getBoundingClientRect().height;
+        p.style.height=Math.max(360, Math.round(window.innerHeight-top-navH-8))+'px';
+        p.style.minHeight='0';
+      }else{
+        p.style.height=p.dataset.deskh||'';
+        p.style.minHeight='520px';
+      }
+    });
+  });
+}
+addEventListener('resize',fitIframePanels);
+addEventListener('orientationchange',()=>setTimeout(fitIframePanels,250));
 // DeerFlow 2.0 (deep-research SuperAgent) runs in Docker on PlexServer with its
 // own nginx at :2026. It's a full Next.js app (/_next, /api …) so it can't be
 // subpath-proxied through the brain like YT Grabber — the tab embeds :2026 on
@@ -531,12 +557,13 @@ function renderDeerFlow(){
     <span class="ln"></span>
     <div class="btn sm" onclick="$('#dfframe').contentWindow.location.reload()">Reload</div>
     <div class="btn sm" onclick="window.open('${base}/workspace','_blank')">Open full window</div></div>
-  <div style="position:relative;height:calc(100vh - 148px);min-height:520px;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--panel);box-shadow:var(--shadow)">
+  <div class="ifpanel" data-deskh="calc(100vh - 148px)" style="position:relative;height:calc(100vh - 148px);min-height:520px;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--panel);box-shadow:var(--shadow)">
     <div id="dfload" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--mut);font-size:13px">Loading DeerFlow…</div>
     <iframe id="dfframe" src="${base}/workspace" title="DeerFlow" allow="clipboard-write; fullscreen"
       onload="dfLoaded()"
       style="width:100%;height:100%;border:0;display:block;background:#0b0f17"></iframe>
   </div>`;
+  fitIframePanels();
 }
 /* ---------- Fleet ---------- */
 function pcCard(x){
