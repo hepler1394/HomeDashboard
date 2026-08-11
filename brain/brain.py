@@ -1788,6 +1788,49 @@ class Handler(BaseHTTPRequestHandler):
         try: self.wfile.write(body)
         except Exception: pass
 
+    def _send_file_range(self, path, ctype):
+        """Stream a file with HTTP Range support, so <video>/<audio> can seek and
+        the browser doesn't buffer the whole thing. Reads in chunks (no loading a
+        127MB video into memory like _send would)."""
+        try:
+            size = os.path.getsize(path)
+        except Exception:
+            return self._send(404, {"error": "not found"})
+        rng = self.headers.get("Range", "")
+        start, end = 0, size - 1
+        partial = False
+        m = re.match(r"bytes=(\d*)-(\d*)", rng or "")
+        if m:
+            if m.group(1): start = int(m.group(1))
+            if m.group(2): end = int(m.group(2))
+            end = min(end, size - 1)
+            if start > end or start >= size:
+                self.send_response(416)
+                self.send_header("Content-Range", f"bytes */{size}")
+                self.end_headers(); return
+            partial = True
+        length = end - start + 1
+        self.send_response(206 if partial else 200)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Accept-Ranges", "bytes")
+        self.send_header("Content-Length", str(length))
+        if partial:
+            self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Cache-Control", "no-cache")
+        self.end_headers()
+        try:
+            with open(path, "rb") as f:
+                f.seek(start)
+                remaining = length
+                while remaining > 0:
+                    chunk = f.read(min(262144, remaining))
+                    if not chunk: break
+                    self.wfile.write(chunk)
+                    remaining -= len(chunk)
+        except Exception:
+            pass
+
     def do_OPTIONS(self):
         self._send(200, {"ok": True})
 
@@ -1972,6 +2015,7 @@ class Handler(BaseHTTPRequestHandler):
             if not os.path.isdir(base):
                 return self._send(200, {"cwd": sub, "dirs": [], "files": []})
             IMG = (".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".svg")
+            VID = (".mp4", ".m4v", ".webm", ".mkv", ".mov")
             dirs, files = [], []
             try:
                 for name in sorted(os.listdir(base), key=str.lower):
@@ -1985,7 +2029,8 @@ class Handler(BaseHTTPRequestHandler):
                     else:
                         files.append({"name": name, "rel": rel, "size": st.st_size,
                                       "mtime": datetime.fromtimestamp(st.st_mtime, timezone.utc).isoformat(),
-                                      "img": name.lower().endswith(IMG)})
+                                      "img": name.lower().endswith(IMG),
+                                      "vid": name.lower().endswith(VID)})
             except Exception as e:
                 return self._send(500, {"error": str(e)[:200]})
             # Newest files first — screenshots you just sent land at the top.
@@ -2000,8 +2045,16 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(404, {"error": "not found"})
             ctypes = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
                       ".gif": "image/gif", ".webp": "image/webp", ".svg": "image/svg+xml",
-                      ".pdf": "application/pdf", ".txt": "text/plain; charset=utf-8"}
-            ct = ctypes.get(os.path.splitext(full)[1].lower(), "application/octet-stream")
+                      ".pdf": "application/pdf", ".txt": "text/plain; charset=utf-8",
+                      ".mp4": "video/mp4", ".m4v": "video/mp4", ".webm": "video/webm",
+                      ".mkv": "video/x-matroska", ".mov": "video/quicktime",
+                      ".mp3": "audio/mpeg", ".m4a": "audio/mp4", ".opus": "audio/ogg"}
+            ext = os.path.splitext(full)[1].lower()
+            ct = ctypes.get(ext, "application/octet-stream")
+            # Range-stream video/audio (seekable, no full-file buffering); small
+            # files (images, text) go through the simple in-memory path.
+            if ct.startswith(("video/", "audio/")) or os.path.getsize(full) > 5_000_000:
+                return self._send_file_range(full, ct)
             try:
                 return self._send(200, open(full, "rb").read(), ct)
             except Exception:

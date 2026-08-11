@@ -151,6 +151,9 @@ select:focus,input:focus,textarea:focus{border-color:var(--acc)}
 .shcell img{width:100%;height:130px;object-fit:cover;display:block;cursor:zoom-in;background:#0b0f17;transition:.15s}
 .shcell:hover img{opacity:.86}
 .shcap{padding:7px 9px;font-size:11.5px;color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.shvid{width:100%;height:130px;background:linear-gradient(135deg,#1a2438,#0b0f17);display:flex;align-items:center;justify-content:center;cursor:pointer}
+.shvid .shplay{width:44px;height:44px;border-radius:50%;background:rgba(129,140,248,.9);color:#fff;display:flex;align-items:center;justify-content:center;font-size:17px;padding-left:3px;transition:.15s}
+.shcell:hover .shplay{transform:scale(1.12)}
 @media(max-width:820px){.shgrid{grid-template-columns:repeat(auto-fill,minmax(46vw,1fr));gap:9px}.shcell img{height:34vw}}
 .fbx{cursor:pointer;padding:1px 5px;border-radius:5px;font-size:12.5px}.fbx:hover{background:var(--panel)}
 .godwarn{font-size:11px;color:#fb7185;font-weight:600}
@@ -324,7 +327,7 @@ code{background:rgba(0,0,0,.3);padding:2px 6px;border-radius:5px;font-size:12px}
       <div class="qbtn ok" onclick="vpnAll(true)"><i data-ic="lock"></i> VPN all ON</div>
       <div class="qbtn warn" onclick="vpnAll(false)"><i data-ic="unlock"></i> VPN all OFF</div>
       <div class="qbtn" onclick="go('share')"><i data-ic="files"></i> HomeShare</div>
-      <div class="qbtn" onclick="window.open('http://192.168.1.174:32400/web','_blank')"><i data-ic="media"></i> Plex</div>
+      <div class="qbtn" onclick="window.open('http://192.168.1.174:32400/web','_blank')"><i data-ic="media"></i> Plex Web</div>
       <div class="qbtn" onclick="go('drive')"><i data-ic="cloud"></i> <span class="gw"><i>D</i><i>r</i><i>i</i><i>v</i><i>e</i></span></div>
       <div class="qbtn" onclick="refresh();toast('Refreshed')"><i data-ic="refresh"></i> Refresh</div>
     </div>
@@ -481,7 +484,7 @@ function onLive(){
   const sig=DEVS.map(x=>x.agent+(x.online?'1':'0')).join(',');
   if(sig!==window._navsig){window._navsig=sig;
     $('#navpcs').innerHTML=DEVS.map(x=>`<div class="nav" onclick="go('pc:${x.agent}')"><span class="dot ${x.online?'on':'off'}"></span><span>${NM(x)}</span></div>`).join('');
-    const tgt=$('#target'),cur=tgt.value;tgt.innerHTML=DEVS.map(x=>`<option value="${x.agent}">${NM(x)}</option>`).join('');if(DEVS.find(x=>x.agent===cur))tgt.value=cur;}
+    const tgt=$('#target'),cur=tgt.value;tgt.innerHTML=DEVS.map(x=>`<option value="${x.agent}">${NM(x)}${x.agent===SELF_AGENT?" (this PC)":""}</option>`).join('');if(DEVS.find(x=>x.agent===cur))tgt.value=cur;}
   // Only the fleet view auto-refreshes on the live tick; detail/settings/chat
   // views keep their state (scan output, scroll, inputs) until you navigate.
   // Gate on a coarse signature so we don't thrash the DOM on 1% CPU jitter.
@@ -510,7 +513,7 @@ async function refresh(){
   const tgt=$('#target');
   const selfOk=SELF_AGENT&&DEVS.find(x=>x.agent===SELF_AGENT);
   const cur=selTarget||(selfOk?SELF_AGENT:'')||tgt.value;
-  tgt.innerHTML=DEVS.map(x=>`<option value="${x.agent}">${NM(x)}</option>`).join('');
+  tgt.innerHTML=DEVS.map(x=>`<option value="${x.agent}">${NM(x)}${x.agent===SELF_AGENT?" (this PC)":""}</option>`).join('');
   if(DEVS.find(x=>x.agent===cur))tgt.value=cur; selTarget=tgt.value;
   $('#navpcs').innerHTML=DEVS.map(x=>`<div class="nav" onclick="go('pc:${x.agent}')"><span class="dot ${x.online?'on':'off'}"></span><span>${NM(x)}</span></div>`).join('');
   if(VIEW==='fleet')renderFleet(); else if(VIEW.startsWith('pc:'))renderPC(VIEW.slice(3));
@@ -1024,9 +1027,14 @@ async function shareLoad(sub){
   // folders
   if(d.dirs.length){ html+='<div class="row" style="flex-wrap:wrap;gap:8px;margin-bottom:12px">'+
     d.dirs.map(f=>`<div class="chip" style="cursor:pointer" onclick="shareLoad('${jsesc(f.rel)}')">📁 ${esc(f.name)}</div>`).join('')+'</div>'; }
-  const imgs=d.files.filter(f=>f.img), others=d.files.filter(f=>!f.img);
+  const vids=d.files.filter(f=>f.vid), imgs=d.files.filter(f=>f.img&&!f.vid), others=d.files.filter(f=>!f.img&&!f.vid);
+  // video gallery — click a poster to play inline (range-streamed from the brain)
+  if(vids.length){ html+='<div class="shgrid">'+vids.map(f=>{
+    const u='/share/file?path='+encodeURIComponent(f.rel)+tq;
+    return `<div class="shcell"><div class="shvid" onclick="shPlay(this,'${jsesc(u)}')"><span class="shplay">▶</span></div><div class="shcap">${esc(f.name)}</div></div>`;
+  }).join('')+'</div>'; }
   // image gallery
-  if(imgs.length){ html+='<div class="shgrid">'+imgs.map(f=>{
+  if(imgs.length){ html+='<div class="shgrid" style="margin-top:'+(vids.length?'12px':'0')+'">'+imgs.map(f=>{
     const u='/share/file?path='+encodeURIComponent(f.rel)+tq;
     return `<div class="shcell"><img loading="lazy" src="${u}" onclick="window.open('${u}','_blank')" title="${esc(f.name)}"><div class="shcap">${esc(f.name)}</div></div>`;
   }).join('')+'</div>'; }
@@ -1037,6 +1045,10 @@ async function shareLoad(sub){
   }).join('')+'</div>'; }
   if(!d.dirs.length && !d.files.length) html='<div class="pcsub" style="padding:8px">This folder is empty. Send a screenshot to your Telegram bot and it lands in Screenshots.</div>';
   $('#shBody').innerHTML=html;
+}
+// Swap a video poster for an inline <video> player on click.
+function shPlay(cell,url){
+  cell.outerHTML=`<video src="${url}" controls autoplay playsinline style="width:100%;height:130px;object-fit:contain;background:#000;display:block"></video>`;
 }
 function renderDrive(){
   const clouds=[];DEVS.forEach(x=>(((x.stats||{}).drives)||[]).filter(isCloud).forEach(d=>clouds.push({agent:x.agent,pc:NM(x),d})));
@@ -1259,7 +1271,7 @@ async function sendChat(){const i=$('#chatin');const q=i.value.trim();if(!q)retu
 /* ---------- Backups ---------- */
 async function renderBackups(){const b=await api('/backups');
   $('#view').innerHTML=`<div class="h2">Backup jobs<span class="ln"></span></div>
-  <div class="grid cards">${(b.jobs||[]).map((j,i)=>`<div class="card"><b>${j.name}</b><div class="pcsub">${j.src} → ${j.remote}</div><div class="pcsub">on ${j.agent}</div><div class="btn sm" style="margin-top:8px" onclick="runBackup(${i})">Run now</div></div>`).join('')||'<div class="card">No backup jobs yet. Add one in Settings (rclone remote required on the PC).</div>'}</div>`;
+  <div class="grid cards">${(b.jobs||[]).map((j,i)=>`<div class="card"><b>${j.name}</b><div class="pcsub">${j.src} → ${j.remote}</div><div class="pcsub">on ${j.agent}</div><div class="btn sm" style="margin-top:8px" onclick="runBackup(${i})">Run now</div></div>`).join('')||'<div class="card">No backup jobs yet. Add one in <span class="lnk" onclick="go(\'settings\')">Settings</span> (rclone remote required on the PC).</div>'}</div>`;
   window._backups=b.jobs||[];
 }
 async function runBackup(i){const j=window._backups[i];await api('/backup/run',{method:'POST',body:JSON.stringify(j)});toast('Backup started: '+j.name);}
