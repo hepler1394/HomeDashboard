@@ -1028,10 +1028,12 @@ async function shareLoad(sub){
   if(d.dirs.length){ html+='<div class="row" style="flex-wrap:wrap;gap:8px;margin-bottom:12px">'+
     d.dirs.map(f=>`<div class="chip" style="cursor:pointer" onclick="shareLoad('${jsesc(f.rel)}')">📁 ${esc(f.name)}</div>`).join('')+'</div>'; }
   const vids=d.files.filter(f=>f.vid), imgs=d.files.filter(f=>f.img&&!f.vid), others=d.files.filter(f=>!f.img&&!f.vid);
-  // video gallery — click a poster to play inline (range-streamed from the brain)
+  // video gallery — real thumbnail as poster, click to play inline (range-streamed)
   if(vids.length){ html+='<div class="shgrid">'+vids.map(f=>{
     const u='/share/file?path='+encodeURIComponent(f.rel)+tq;
-    return `<div class="shcell"><div class="shvid" onclick="shPlay(this,'${jsesc(u)}')"><span class="shplay">▶</span></div><div class="shcap">${esc(f.name)}</div></div>`;
+    const poster=f.thumb?('/share/file?path='+encodeURIComponent(f.thumb)+tq):'';
+    const bg=poster?`background-image:url('${poster}');background-size:cover;background-position:center`:'';
+    return `<div class="shcell"><div class="shvid" style="${bg}" onclick="shPlay(this,'${jsesc(u)}')"><span class="shplay">▶</span></div><div class="shcap" title="${esc(f.name)}">${esc(f.name)}</div></div>`;
   }).join('')+'</div>'; }
   // image gallery
   if(imgs.length){ html+='<div class="shgrid" style="margin-top:'+(vids.length?'12px':'0')+'">'+imgs.map(f=>{

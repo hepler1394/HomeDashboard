@@ -2016,25 +2016,62 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, {"cwd": sub, "dirs": [], "files": []})
             IMG = (".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".svg")
             VID = (".mp4", ".m4v", ".webm", ".mkv", ".mov")
+            # Sidecar/junk that should never show as its own tile.
+            SKIP_EXT = (".info.json", ".description", ".ytdl", ".part", ".json", ".txt")
+
+            def relof(p):
+                r = os.path.relpath(p, os.path.abspath(HOMESHARE))
+                return r.replace("/", "\\")
+
+            def thumb_for(video_full):
+                """A sibling image with the same stem is the video's poster."""
+                stem = os.path.splitext(video_full)[0]
+                for e in (".webp", ".jpg", ".jpeg", ".png"):
+                    if os.path.exists(stem + e):
+                        return relof(stem + e)
+                return None
+
+            def file_entry(full, name):
+                st = os.stat(full)
+                lname = name.lower()
+                is_vid = lname.endswith(VID)
+                return {"name": os.path.splitext(name)[0] if is_vid else name,
+                        "rel": relof(full), "size": st.st_size,
+                        "mtime": datetime.fromtimestamp(st.st_mtime, timezone.utc).isoformat(),
+                        "img": lname.endswith(IMG), "vid": is_vid,
+                        "thumb": thumb_for(full) if is_vid else None}
+
             dirs, files = [], []
             try:
                 for name in sorted(os.listdir(base), key=str.lower):
                     if name.startswith(".stfolder") or name.startswith(".sync") or name == ".thumbs": continue
                     full = os.path.join(base, name)
-                    rel = (sub + "\\" + name) if sub else name
-                    try: st = os.stat(full)
-                    except Exception: continue
                     if os.path.isdir(full):
-                        dirs.append({"name": name, "rel": rel})
-                    else:
-                        files.append({"name": name, "rel": rel, "size": st.st_size,
-                                      "mtime": datetime.fromtimestamp(st.st_mtime, timezone.utc).isoformat(),
-                                      "img": name.lower().endswith(IMG),
-                                      "vid": name.lower().endswith(VID)})
+                        # A folder holding exactly one video (the YT Grabber layout)
+                        # is flattened to that single video tile, so browsing shows a
+                        # clean grid of videos instead of folders-within-folders.
+                        try: inner = os.listdir(full)
+                        except Exception: inner = []
+                        vids = [x for x in inner if x.lower().endswith(VID)]
+                        if len(vids) == 1:
+                            e = file_entry(os.path.join(full, vids[0]), vids[0])
+                            e["name"] = name          # show the clean folder title, not the [id] filename
+                            files.append(e)
+                        else:
+                            dirs.append({"name": name, "rel": relof(full)})
+                        continue
+                    lname = name.lower()
+                    if lname.endswith(SKIP_EXT):
+                        continue                       # hide metadata sidecars
+                    # An image that is a sibling video's thumbnail is not its own tile.
+                    if lname.endswith(IMG):
+                        stem = os.path.splitext(full)[0]
+                        if any(os.path.exists(stem + ve) for ve in VID):
+                            continue
+                    files.append(file_entry(full, name))
             except Exception as e:
                 return self._send(500, {"error": str(e)[:200]})
-            # Newest files first — screenshots you just sent land at the top.
-            files.sort(key=lambda x: x["mtime"], reverse=True)
+            files.sort(key=lambda x: x["mtime"], reverse=True)   # newest first
             return self._send(200, {"cwd": sub, "dirs": dirs, "files": files})
         if route == "/share/file":
             # <img> tags can't send the token header, so accept it as ?t= too.
