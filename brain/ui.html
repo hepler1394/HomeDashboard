@@ -506,27 +506,27 @@ function renderYTG(){
 // looks like the public deerflow.tech site and confuses the tab. /workspace is
 // the actual app, and it redirects to /setup (no admin yet) or /login as needed.
 //
-// Always address DeerFlow by its Tailscale MagicDNS name, never location.hostname.
-// The login is a cookie scoped to host:port, so building the URL from whatever
-// address you happened to open the dashboard with created a separate session per
-// address — sign in on the LAN IP and you were still signed out over Tailscale,
-// and again on localhost. One fixed hostname means one session everywhere.
-// MagicDNS rather than 100.84.102.74 because the name survives the machine being
-// re-added to the tailnet; the IP would not.
-const DF_HOST='plexserver.tail22fc0f.ts.net';
-// Called from the iframe's onload. Cancels the fallback timer and marks the
-// chip connected, noting when we are on the fallback address so a stale login
-// prompt is self-explanatory rather than mysterious.
+// The iframe MUST use location.hostname — the same host the dashboard itself was
+// opened at. DeerFlow's login cookie is SameSite=Lax, which a browser refuses to
+// send inside a CROSS-SITE iframe. Pinning the iframe to a fixed Tailscale name
+// while the dashboard was opened at the LAN IP made the frame third-party, so
+// login set the cookie but it was never sent back — an endless bounce to the
+// sign-in page (learned the hard way 2026-08-10). Matching the dashboard host
+// keeps the frame same-site so the cookie sticks.
+//
+// Consequence: the session is scoped to whichever host you open the DASHBOARD at.
+// To get ONE login across every machine, open the dashboard itself at one address
+// everywhere — the Tailscale name http://plexserver.tail22fc0f.ts.net:8788 works
+// from any PC — and the tab inherits it automatically.
 function dfLoaded(){
-  clearTimeout(window._dfTimer);
   const dot=$('#dfdot'), chip=$('#dfchip'), load=$('#dfload');
   if(load) load.style.display='none';
   if(dot){ dot.style.background='var(--ok)'; dot.style.boxShadow='0 0 7px var(--ok)'; }
-  if(chip) chip.lastChild.textContent = window._dfFellBack ? ('Connected via '+location.hostname) : 'Connected';
+  if(chip) chip.lastChild.textContent='Connected';
 }
 function renderDeerFlow(){
-  const base=`http://${DF_HOST}:2026`;
-  $('#view').innerHTML=`<div class="h2">Research agent — ${DF_HOST}:2026
+  const base=`http://${location.hostname}:2026`;
+  $('#view').innerHTML=`<div class="h2">Research agent — ${location.hostname}:2026
     <span class="chip" id="dfchip"><span id="dfdot" style="width:8px;height:8px;border-radius:50%;background:var(--dim)"></span>Connecting…</span>
     <span class="ln"></span>
     <div class="btn sm" onclick="$('#dfframe').contentWindow.location.reload()">Reload</div>
@@ -537,20 +537,6 @@ function renderDeerFlow(){
       onload="dfLoaded()"
       style="width:100%;height:100%;border:0;display:block;background:#0b0f17"></iframe>
   </div>`;
-  // If Tailscale is down on this client the frame never loads and the panel
-  // would sit on "Loading…" forever. Fall back to the address the dashboard
-  // itself was opened with, which at least works on the LAN — at the cost of a
-  // separate login, hence the visible note rather than a silent swap.
-  clearTimeout(window._dfTimer);
-  window._dfFellBack=false;
-  window._dfTimer=setTimeout(()=>{
-    if($('#dfload') && $('#dfload').style.display!=='none' && !window._dfFellBack){
-      window._dfFellBack=true;
-      $('#dfchip').lastChild.textContent='Tailscale unreachable — using '+location.hostname;
-      $('#dfload').textContent='Tailscale not reachable, retrying on '+location.hostname+'…';
-      $('#dfframe').src=`http://${location.hostname}:2026/workspace`;
-    }
-  },9000);
 }
 /* ---------- Fleet ---------- */
 function pcCard(x){
