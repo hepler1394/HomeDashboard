@@ -156,6 +156,7 @@ main{flex:1;overflow-y:auto;padding:20px 28px 60px}
 .catbadge{display:inline-block;background:rgba(76,194,255,.15);color:var(--blue);border:1px solid rgba(76,194,255,.4);font-size:11px;padding:1px 8px;border-radius:10px}
 .watchcard{display:flex;align-items:center;gap:12px;background:var(--panel2);border-radius:10px;padding:10px 14px;margin-bottom:8px}
 .watchcard img{width:60px;height:34px;object-fit:cover;border-radius:6px;background:#000}
+.tlink.tdel{color:#e57373}.tlink.tdel:hover{color:#ff5252}
 </style>
 </head>
 <body>
@@ -167,6 +168,7 @@ main{flex:1;overflow-y:auto;padding:20px 28px 60px}
   <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
   <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
   <symbol id="i-folder" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 5v6m4-6v6"/></symbol>
   <symbol id="i-tv" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="15" rx="2"/><polyline points="17 2 12 7 7 2"/></symbol>
   <symbol id="i-play" viewBox="0 0 24 24"><polygon points="6 4 20 12 6 20 6 4"/></symbol>
   <symbol id="i-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></symbol>
@@ -539,7 +541,7 @@ function renderLib(){
       <div class="info"><div style="min-width:0">
         <div class="tt">${esc(it.name)}</div>
         <div class="meta">${it.category?`<span class="catbadge">${esc(it.category)}</span> `:""}${it.size_mb} MB · plays in browser</div>
-        <div class="meta"><span class="tlink" onclick="reveal('${esc(it.rel).replace(/'/g,"")}')"><svg><use href="#i-folder"/></svg>show in folder</span></div>
+        <div class="meta"><span class="tlink" onclick="reveal('${esc(it.rel).replace(/'/g,"")}')"><svg><use href="#i-folder"/></svg>show in folder</span><span class="tlink tdel" onclick="delFile('${esc(it.rel).replace(/'/g,"")}','${esc(it.name).replace(/'/g,"")}')"><svg><use href="#i-trash"/></svg>delete</span></div>
       </div></div>
     </div>`).join(""):'<div class="empty">Nothing matches these filters.</div>';
 }
@@ -556,6 +558,15 @@ async function aiLibrary(){
   }catch(e){toast("AI: "+e.message,5000);}
 }
 async function reveal(rel){await fetch("/api/reveal",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({rel})});}
+async function delFile(rel,name){
+  if(!confirm("Delete this video?
+
+"+name+"
+
+This removes it from HomeShare on every PC and cannot be undone."))return;
+  const r=await (await fetch("/api/delete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({rel})})).json();
+  if(r.ok){toast("Deleted");loadLibrary();}else{toast("Delete failed: "+(r.error||""),1);}
+}
 
 /* ---------- channels / notifications ---------- */
 async function loadWatched(){

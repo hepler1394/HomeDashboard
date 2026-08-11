@@ -735,6 +735,31 @@ def api_reveal():
     return jsonify({"ok": True})
 
 
+@app.route("/api/delete", methods=["POST"])
+def api_delete():
+    """Delete a library video. Each video lives in its own subfolder, so remove
+    the whole folder (video + thumbnail + info json) rather than orphaning the
+    siblings. Scoped to download_dir; refuses anything resolving outside it."""
+    import shutil
+    rel = request.get_json(force=True).get("rel", "")
+    root = Path(config["download_dir"]).resolve()
+    target = (root / rel).resolve()
+    if not str(target).startswith(str(root)) or not target.exists():
+        return jsonify({"ok": False, "error": "not found"}), 404
+    try:
+        parent = target.parent
+        if parent != root and str(parent).startswith(str(root)):
+            shutil.rmtree(parent)          # per-video folder: remove it whole
+        else:
+            target.unlink()                # loose file at the root
+            for sib in root.glob(target.stem + ".*"):
+                try: sib.unlink()
+                except Exception: pass
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)[:150]}), 500
+
+
 # ------------------------------------------------------ channel watch / notify
 
 def resolve_channel(url):

@@ -2019,7 +2019,7 @@ class Handler(BaseHTTPRequestHandler):
             dirs, files = [], []
             try:
                 for name in sorted(os.listdir(base), key=str.lower):
-                    if name.startswith(".stfolder") or name.startswith(".sync"): continue
+                    if name.startswith(".stfolder") or name.startswith(".sync") or name == ".thumbs": continue
                     full = os.path.join(base, name)
                     rel = (sub + "\\" + name) if sub else name
                     try: st = os.stat(full)
