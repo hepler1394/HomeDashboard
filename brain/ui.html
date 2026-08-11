@@ -1052,7 +1052,16 @@ function renderDrive(){
       <div class="btn sm p" onclick="driveSearch()">Search</div>
       ${''}<span id="fspaste"></span></div>
     <div id="fslist" style="max-height:56vh;overflow:auto">${clouds.length?'':'No cloud drives detected. Mount Google Drive with RaiDrive (or rclone) on any PC and it shows up here automatically.'}</div></div>`;
-  if(clouds.length){const keep=clouds.find(c=>c.agent===DRV.agent&&DRV.path);driveGo((keep||clouds[0]).agent,keep?DRV.path:clouds[0].d.letter+':\\');}
+  // Default to a cloud that's actually reachable: keep the current selection,
+  // else this PC's own online drive, else any online drive, else the first.
+  // (Previously always defaulted to clouds[0], often the offline LAPTOP, so the
+  // view opened on "laptop is offline" and looked broken.)
+  if(clouds.length){
+    const keep=clouds.find(c=>c.agent===DRV.agent&&DRV.path);
+    const isOn=c=>DEVS.some(d=>d.agent===c.agent&&d.online);
+    const def=keep || clouds.find(c=>c.agent===SELF_AGENT&&isOn(c)) || clouds.find(isOn) || clouds[0];
+    driveGo(def.agent, (keep&&def===keep)?DRV.path:def.d.letter+':\\');
+  }
 }
 function fsCrumbs(){
   const parts=DRV.path.replace(/\\+$/,'').split('\\');
