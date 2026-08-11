@@ -559,11 +559,7 @@ async function aiLibrary(){
 }
 async function reveal(rel){await fetch("/api/reveal",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({rel})});}
 async function delFile(rel,name){
-  if(!confirm("Delete this video?
-
-"+name+"
-
-This removes it from HomeShare on every PC and cannot be undone."))return;
+  if(!confirm("Delete this video?\n\n"+name+"\n\nThis removes it from HomeShare on every PC and cannot be undone."))return;
   const r=await (await fetch("/api/delete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({rel})})).json();
   if(r.ok){toast("Deleted");loadLibrary();}else{toast("Delete failed: "+(r.error||""),1);}
 }
